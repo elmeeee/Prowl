@@ -12,12 +12,12 @@ import SwiftUI
 import UIKit
 import ObjectiveC.runtime
 
-public enum ProwlShakeMonitor: Sendable {
+public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
 
     private static let debounceInterval: TimeInterval = 0.25
-    private static let lastPostedLock = NSLock()
-    private static var _lastPostedAt: Date?
+    @MainActor
+    private static var lastPostedAt: Date?
 
     public static func installIfNeeded() {
         _ = installToken
@@ -47,16 +47,12 @@ public enum ProwlShakeMonitor: Sendable {
     }()
 
     static func postShakeDetected() {
-        let now = Date()
-        lastPostedLock.lock()
-        if let last = _lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
-            lastPostedLock.unlock()
-            return
-        }
-        _lastPostedAt = now
-        lastPostedLock.unlock()
-
-        DispatchQueue.main.async {
+        Task { @MainActor in
+            let now = Date()
+            if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
+                return
+            }
+            lastPostedAt = now
             NotificationCenter.default.post(name: didShakeNotification, object: nil)
         }
     }

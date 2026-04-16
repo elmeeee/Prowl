@@ -25,7 +25,24 @@ In Xcode:
 
 1. `File` -> `Add Package Dependencies...`
 2. Enter your repository URL for Prowl
-3. Add the `Prowl` product to your app target
+3. Select dependency rule version:
+   - `Up to Next Major Version` (recommended), example from `0.1.0`
+   - `Up to Next Minor Version`
+   - `Exact Version` (locked)
+4. Add the `Prowl` product to your app target
+
+### Version Strategy Example
+
+- **Stable updates (recommended):** `Up to Next Major` from `0.1.0`
+- **Strict lock for CI/release:** `Exact` `0.1.0`
+
+If you use `Package.swift` directly, pin like this:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.1.0")
+]
+```
 
 ## Quick Start
 
@@ -48,6 +65,16 @@ struct DemoApp: App {
         }
     }
 }
+```
+
+## Check Version
+
+You can expose/log the package version in your app:
+
+```swift
+import Prowl
+
+print("Prowl version:", Prowl.version)
 ```
 
 ### 2) Attach the inspector UI
@@ -124,4 +151,3 @@ Prowl.stop()
 - Prowl uses native APIs only (no third-party dependencies).
 - Log capture is designed to be idempotent and avoid side effects to host networking behavior.
 - `URLProtocol` loop prevention is handled internally.
-# Prowl

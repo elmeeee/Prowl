@@ -13,7 +13,7 @@ import ProwlCore
 @MainActor
 public enum Prowl {
     /// Semantic version of the distributed Prowl package.
-    public static let version = "0.5.5"
+    public static let version = "0.5.6"
 
     private static var isRunning = false
 

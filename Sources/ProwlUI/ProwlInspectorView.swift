@@ -34,17 +34,29 @@ public struct ProwlInspectorView: View {
     }
 
     private var dashboardList: some View {
-        List(viewModel.filteredLogs, selection: $selectedLogID) { log in
+        List(selection: $selectedLogID) {
+            ForEach(viewModel.filteredLogs) { log in
 #if os(macOS) || os(visionOS)
-            ProwlDashboardRowView(log: log)
-                .tag(log.id)
-#else
-            NavigationLink {
-                ProwlLogDetailView(log: log)
-            } label: {
                 ProwlDashboardRowView(log: log)
-            }
+                    .tag(log.id)
+#else
+                NavigationLink {
+                    ProwlLogDetailView(log: log)
+                } label: {
+                    ProwlDashboardRowView(log: log)
+                }
 #endif
+            }
+            
+            if !viewModel.filteredLogs.isEmpty {
+                Text("Prowl • Crafted by Elmee")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowBackground(Color.clear)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+            }
         }
         .overlay {
             if viewModel.filteredLogs.isEmpty {
@@ -78,13 +90,23 @@ public struct ProwlInspectorView: View {
 
 #if !os(watchOS)
         ToolbarItem(placement: .automatic) {
-            Menu("Export") {
-                Button("Formatted Text") {
-                    exportLogs(as: .formattedText)
+            Menu {
+                Button(role: .destructive) {
+                    viewModel.clearLogs()
+                } label: {
+                    Label("Clear Logs", systemImage: "trash")
                 }
-                Button("cURL Commands") {
-                    exportLogs(as: .curlCommands)
+                
+                Section("Export") {
+                    Button("Formatted Text") {
+                        exportLogs(as: .formattedText)
+                    }
+                    Button("cURL Commands") {
+                        exportLogs(as: .curlCommands)
+                    }
                 }
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
         }
 #endif

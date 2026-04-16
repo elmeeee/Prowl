@@ -16,8 +16,10 @@ public final class ProwlInspectorViewModel: ObservableObject {
     @Published public private(set) var logs: [NetworkLog] = []
 
     private var streamTask: Task<Void, Never>?
+    private let explicitStorage: ProwlStorage?
 
     public init(storage: ProwlStorage? = nil) {
+        self.explicitStorage = storage
         streamTask = Task { [weak self] in
             guard let self else { return }
             let resolvedStorage: ProwlStorage
@@ -50,5 +52,12 @@ public final class ProwlInspectorViewModel: ObservableObject {
         guard !searchText.isEmpty else { return true }
         let haystack = log.url?.absoluteString.lowercased() ?? ""
         return haystack.contains(searchText.lowercased())
+    }
+
+    public func clearLogs() {
+        Task {
+            let targetStorage = explicitStorage ?? (await ProwlRuntime.shared.currentStorage())
+            await targetStorage.clear()
+        }
     }
 }

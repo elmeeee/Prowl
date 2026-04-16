@@ -29,6 +29,8 @@ public enum Prowl {
         ProwlAutoInspector.enable()
     #endif
         isRunning = true
+        
+        print("🐾 Prowl Inspector v\(version) started | Crafted by Elmee")
     }
 
     /// Unregisters `ProwlProtocol` to fully disable interception.

@@ -24,50 +24,86 @@ public struct ProwlDashboardRowView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(log.method)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.thinMaterial, in: Capsule())
-
-                statusView
-                Spacer(minLength: 12)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                methodBadge(log.method)
+                
+                Text(log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
+                    .font(.system(.body, design: .monospaced).weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundColor(.primary)
+                
+                Spacer(minLength: 8)
+                
                 Text(Self.timestampFormatter.string(from: log.startedAt))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(.secondary)
             }
-
-            Text(log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
-                .font(.body.monospaced())
-                .lineLimit(1)
-                .truncationMode(.middle)
+            
+            HStack(spacing: 8) {
+                statusBadge(statusCode: log.statusCode)
+                
+                if let host = log.url?.host {
+                    Text(host)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer(minLength: 8)
+                
+                Text(String(format: "%.3fs", log.duration))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(.secondary)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
-    private var statusView: some View {
-        if let statusCode = log.statusCode {
-            Text("\(statusCode)")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(color(for: statusCode))
-        } else {
-            Text("ERR")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.red)
+    private func methodBadge(_ method: String) -> some View {
+        Text(method.uppercased())
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .foregroundColor(methodColor(method))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(methodColor(method).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    @ViewBuilder
+    private func statusBadge(statusCode: Int?) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(statusColor(statusCode))
+                .frame(width: 8, height: 8)
+            Text(statusCode.map { "\($0)" } ?? "ERR")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundColor(statusColor(statusCode))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(statusColor(statusCode).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func methodColor(_ method: String) -> Color {
+        switch method.uppercased() {
+        case "GET": return .blue
+        case "POST": return .green
+        case "PUT", "PATCH": return .orange
+        case "DELETE": return .red
+        default: return .secondary
         }
     }
 
-    private func color(for statusCode: Int) -> Color {
-        switch statusCode {
-        case 200...299:
-            return .green
-        case 400...599:
-            return .red
-        default:
-            return .orange
+    private func statusColor(_ statusCode: Int?) -> Color {
+        guard let code = statusCode else { return .red }
+        switch code {
+        case 200...299: return .green
+        case 300...399: return .blue
+        case 400...499: return .orange
+        case 500...599: return .red
+        default: return .secondary
         }
     }
 }

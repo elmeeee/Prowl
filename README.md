@@ -77,25 +77,14 @@ import Prowl
 print("Prowl version:", Prowl.version)
 ```
 
-### 2) Attach the inspector UI
+### 2) Open the inspector
 
-Attach this to your root view:
+No extra view modifier is required.
 
-```swift
-import Prowl
-
-struct ContentView: View {
-    var body: some View {
-        MainScreen()
-            .prowlInspector()
-    }
-}
-```
-
-That gives:
+After `Prowl.start()`:
 
 - iOS: shake device to toggle inspector
-- macOS (desktop): press `Command + Shift + P` to toggle inspector
+- macOS: present `ProwlInspectorView()` manually (see Manual Inspector View)
 
 ## Configure Storage and Masking
 

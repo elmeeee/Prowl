@@ -28,6 +28,9 @@ public enum Prowl {
         defer { stateLock.unlock() }
         guard !isRunning else { return }
         URLProtocol.registerClass(ProwlProtocol.self)
+    #if os(iOS)
+        ProwlAutoInspector.enable()
+    #endif
         isRunning = true
     }
 
@@ -37,6 +40,9 @@ public enum Prowl {
         defer { stateLock.unlock() }
         guard isRunning else { return }
         URLProtocol.unregisterClass(ProwlProtocol.self)
+    #if os(iOS)
+        ProwlAutoInspector.disable()
+    #endif
         isRunning = false
     }
 

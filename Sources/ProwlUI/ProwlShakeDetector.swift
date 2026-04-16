@@ -14,6 +14,7 @@ import ObjectiveC.runtime
 
 public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
+    @MainActor
     private static var lastPostedAt: Date?
 
     public static func installIfNeeded() {
@@ -36,6 +37,7 @@ public enum ProwlShakeMonitor {
         }
     }()
 
+    @MainActor
     static func postShakeDetected() {
         let now = Date()
         if let lastPostedAt, now.timeIntervalSince(lastPostedAt) < 0.25 {

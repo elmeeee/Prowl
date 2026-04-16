@@ -13,7 +13,7 @@ import ProwlCore
 @MainActor
 public enum Prowl {
     /// Semantic version of the distributed Prowl package.
-    public static let version = "0.4.0"
+    public static let version = "0.5.0"
 
     private static let stateLock = NSLock()
     private static var isRunning = false
@@ -44,6 +44,30 @@ public enum Prowl {
         ProwlAutoInspector.disable()
     #endif
         isRunning = false
+    }
+
+    /// Shows Prowl inspector manually (iOS only).
+    public static func show() {
+        guard isRunning else { return }
+#if os(iOS)
+        ProwlAutoInspector.show()
+#endif
+    }
+
+    /// Hides Prowl inspector manually (iOS only).
+    public static func hide() {
+        guard isRunning else { return }
+#if os(iOS)
+        ProwlAutoInspector.hide()
+#endif
+    }
+
+    /// Toggles Prowl inspector manually (iOS only).
+    public static func toggle() {
+        guard isRunning else { return }
+#if os(iOS)
+        ProwlAutoInspector.toggle()
+#endif
     }
 
     /// Allows host apps to override defaults while preserving zero side-effects.

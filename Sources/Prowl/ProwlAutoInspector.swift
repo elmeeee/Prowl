@@ -26,7 +26,7 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            presentIfNeeded()
+            toggle()
         }
     }
 
@@ -34,6 +34,23 @@ enum ProwlAutoInspector {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
             self.observer = nil
+        }
+    }
+
+    static func show() {
+        presentIfNeeded()
+    }
+
+    static func hide() {
+        guard let inspector = presentedInspectorController() else { return }
+        inspector.dismiss(animated: true)
+    }
+
+    static func toggle() {
+        if presentedInspectorController() != nil {
+            hide()
+        } else {
+            show()
         }
     }
 
@@ -68,19 +85,19 @@ enum ProwlAutoInspector {
     }
 
     private static func keyWindow() -> UIWindow? {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let foregroundWindows = scenes
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
-            ?? UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
-            ?? UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first
+        if let activeKeyWindow = foregroundWindows.first(where: \.isKeyWindow) {
+            return activeKeyWindow
+        }
+
+        let allWindows = scenes.flatMap(\.windows)
+        if let anyKeyWindow = allWindows.first(where: \.isKeyWindow) {
+            return anyKeyWindow
+        }
+        return allWindows.first
     }
 
     private static func isInspectorAlreadyPresented(from controller: UIViewController?) -> Bool {
@@ -92,6 +109,18 @@ enum ProwlAutoInspector {
             cursor = current.presentedViewController
         }
         return false
+    }
+
+    private static func presentedInspectorController() -> UIViewController? {
+        guard let root = keyWindow()?.rootViewController else { return nil }
+        var cursor: UIViewController? = root
+        while let current = cursor {
+            if current.view.accessibilityIdentifier == inspectorMarker {
+                return current
+            }
+            cursor = current.presentedViewController
+        }
+        return nil
     }
 }
 #endif

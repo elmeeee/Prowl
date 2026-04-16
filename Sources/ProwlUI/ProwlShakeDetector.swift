@@ -14,20 +14,36 @@ import ObjectiveC.runtime
 
 public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
+    private static var lastPostedAt: Date?
 
     public static func installIfNeeded() {
         _ = installToken
     }
 
     private static let installToken: Void = {
-        guard
+        if
             let originalMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
             let swizzledMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
-        else {
+        {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+
+        if
+            let originalWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionEnded(_:with:))),
+            let swizzledWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionEnded(_:with:)))
+        {
+            method_exchangeImplementations(originalWindowMethod, swizzledWindowMethod)
+        }
+    }()
+
+    static func postShakeDetected() {
+        let now = Date()
+        if let lastPostedAt, now.timeIntervalSince(lastPostedAt) < 0.25 {
             return
         }
-        method_exchangeImplementations(originalMethod, swizzledMethod)
-    }()
+        lastPostedAt = now
+        NotificationCenter.default.post(name: didShakeNotification, object: nil)
+    }
 }
 
 public struct ProwlShakeDetector: View {
@@ -47,13 +63,21 @@ public struct ProwlShakeDetector: View {
                 onShake()
             }
     }
-} 
+}
 
 private extension UIApplication {
     @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
         prowl_sendEvent(event)
         guard event.type == .motion, event.subtype == .motionShake else { return }
-        NotificationCenter.default.post(name: ProwlShakeMonitor.didShakeNotification, object: nil)
+        ProwlShakeMonitor.postShakeDetected()
+    }
+}
+
+private extension UIWindow {
+    @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        prowl_motionEnded(motion, with: event)
+        guard motion == .motionShake else { return }
+        ProwlShakeMonitor.postShakeDetected()
     }
 }
 #else

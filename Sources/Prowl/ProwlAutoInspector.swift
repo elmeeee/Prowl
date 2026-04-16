@@ -27,7 +27,9 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            toggle()
+            MainActor.assumeIsolated {
+                toggle()
+            }
         }
     }
 
@@ -59,19 +61,28 @@ enum ProwlAutoInspector {
         if let lastPresentationDate, Date().timeIntervalSince(lastPresentationDate) < 0.8 {
             return
         }
-        guard let topController = topMostViewController() else { return }
-        guard !isInspectorAlreadyPresented(from: topController) else { return }
+
+        guard let window = keyWindow() else { return }
+        guard let root = window.rootViewController else { return }
+        guard !isInspectorAlreadyPresented(from: root) else { return }
+        guard let topController = topMostViewController(from: root) else { return }
+
+        guard !topController.isBeingPresented,
+              !topController.isBeingDismissed,
+              topController.presentedViewController == nil else {
+            return
+        }
 
         let inspectorView = ProwlInspectorView()
         let hostController = UIHostingController(rootView: inspectorView)
         hostController.view.accessibilityIdentifier = inspectorMarker
-        hostController.modalPresentationStyle = .automatic
+        hostController.modalPresentationStyle = .pageSheet
         topController.present(hostController, animated: true)
         lastPresentationDate = Date()
     }
 
     private static func topMostViewController(
-        from controller: UIViewController? = keyWindow()?.rootViewController
+        from controller: UIViewController?
     ) -> UIViewController? {
         if let navigation = controller as? UINavigationController {
             return topMostViewController(from: navigation.visibleViewController)

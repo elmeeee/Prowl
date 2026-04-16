@@ -13,9 +13,8 @@ import ProwlCore
 @MainActor
 public enum Prowl {
     /// Semantic version of the distributed Prowl package.
-    public static let version = "0.5.2"
+    public static let version = "0.5.3"
 
-    private static let stateLock = NSLock()
     private static var isRunning = false
 
     public static func storage() async -> ProwlStorage {
@@ -24,8 +23,6 @@ public enum Prowl {
 
     /// Registers `ProwlProtocol` once for process-wide interception.
     public static func start() {
-        stateLock.lock()
-        defer { stateLock.unlock() }
         guard !isRunning else { return }
         URLProtocol.registerClass(ProwlProtocol.self)
     #if os(iOS)
@@ -36,8 +33,6 @@ public enum Prowl {
 
     /// Unregisters `ProwlProtocol` to fully disable interception.
     public static func stop() {
-        stateLock.lock()
-        defer { stateLock.unlock() }
         guard isRunning else { return }
         URLProtocol.unregisterClass(ProwlProtocol.self)
     #if os(iOS)
@@ -49,25 +44,25 @@ public enum Prowl {
     /// Shows Prowl inspector manually (iOS only).
     public static func show() {
         guard isRunning else { return }
-#if os(iOS)
+    #if os(iOS)
         ProwlAutoInspector.show()
-#endif
+    #endif
     }
 
     /// Hides Prowl inspector manually (iOS only).
     public static func hide() {
         guard isRunning else { return }
-#if os(iOS)
+    #if os(iOS)
         ProwlAutoInspector.hide()
-#endif
+    #endif
     }
 
     /// Toggles Prowl inspector manually (iOS only).
     public static func toggle() {
         guard isRunning else { return }
-#if os(iOS)
+    #if os(iOS)
         ProwlAutoInspector.toggle()
-#endif
+    #endif
     }
 
     /// Allows host apps to override defaults while preserving zero side-effects.

@@ -29,7 +29,7 @@ public struct ProwlDashboardRowView: View {
                 methodBadge(log.method)
                 
                 Text(log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
-                    .font(.system(.body, design: .monospaced).weight(.medium))
+                    .font(.body.monospaced().weight(.medium))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundColor(.primary)
@@ -64,7 +64,7 @@ public struct ProwlDashboardRowView: View {
     @ViewBuilder
     private func methodBadge(_ method: String) -> some View {
         Text(method.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.caption2.monospaced().weight(.bold))
             .foregroundColor(methodColor(method))
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
@@ -78,7 +78,7 @@ public struct ProwlDashboardRowView: View {
                 .fill(statusColor(statusCode))
                 .frame(width: 8, height: 8)
             Text(statusCode.map { "\($0)" } ?? "ERR")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.caption.monospaced().weight(.bold))
                 .foregroundColor(statusColor(statusCode))
         }
         .padding(.horizontal, 6)

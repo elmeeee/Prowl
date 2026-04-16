@@ -149,7 +149,7 @@ public struct ProwlLogDetailView: View {
                 .frame(width: 90, alignment: .leading)
 
             Text(value)
-                .font(.system(.subheadline, design: .monospaced))
+                .font(.subheadline.monospaced())
                 .foregroundColor(emphasized ? .red : .primary)
                 .textSelection(.enabled)
                 .multilineTextAlignment(.leading)
@@ -205,10 +205,10 @@ public struct ProwlLogDetailView: View {
                     ForEach(Array(sortedKeys.enumerated()), id: \.element) { index, key in
                         HStack(alignment: .top, spacing: 12) {
                             Text(key)
-                                .font(.system(.caption, weight: .bold))
+                                .font(.caption.weight(.bold))
                                 .frame(width: 120, alignment: .leading)
                             Text(headers[key] ?? "")
-                                .font(.system(.caption, design: .monospaced))
+                                .font(.caption.monospaced())
                                 .textSelection(.enabled)
                             Spacer(minLength: 0)
                         }
@@ -260,7 +260,7 @@ public struct ProwlLogDetailView: View {
             if let body, !body.data.isEmpty {
                 let rendered = bodyText(from: body, pretty: isBodyPretty)
                 Text(ProwlJSONSyntaxHighlighter.highlight(rendered, contentType: body.contentType))
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.caption.monospaced())
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)

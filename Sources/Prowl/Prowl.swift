@@ -43,7 +43,9 @@ public enum Prowl {
 
     /// Shows Prowl inspector manually (iOS only).
     public static func show() {
-        guard isRunning else { return }
+        if !isRunning {
+            start()
+        }
     #if os(iOS)
         ProwlAutoInspector.show()
     #endif
@@ -59,7 +61,9 @@ public enum Prowl {
 
     /// Toggles Prowl inspector manually (iOS only).
     public static func toggle() {
-        guard isRunning else { return }
+        if !isRunning {
+            start()
+        }
     #if os(iOS)
         ProwlAutoInspector.toggle()
     #endif

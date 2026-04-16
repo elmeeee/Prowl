@@ -10,41 +10,68 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
-import ObjectiveC.runtime
 
 public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
+    private static let bridgeMarker = "com.prowl.shake-bridge"
 
     private static let debounceInterval: TimeInterval = 0.25
     @MainActor
     private static var lastPostedAt: Date?
+    @MainActor
+    private static var isInstalled = false
+    @MainActor
+    private static var keyWindowObserver: NSObjectProtocol?
 
+    @MainActor
     public static func installIfNeeded() {
-        _ = installToken
+        guard !isInstalled else { return }
+        isInstalled = true
+
+        attachBridgeIfNeeded()
+        keyWindowObserver = NotificationCenter.default.addObserver(
+            forName: UIWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                attachBridgeIfNeeded()
+            }
+        }
     }
 
-    private nonisolated(unsafe) static let installToken: Void = {
-        if
-            let originalMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
-            let swizzledMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
-        {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
+    @MainActor
+    private static func attachBridgeIfNeeded() {
+        guard let root = keyWindow()?.rootViewController else { return }
+        if root.children.contains(where: { $0 is ProwlShakeBridgeViewController }) {
+            return
         }
 
-        if
-            let originalWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionEnded(_:with:))),
-            let swizzledWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionEnded(_:with:)))
-        {
-            method_exchangeImplementations(originalWindowMethod, swizzledWindowMethod)
+        let bridge = ProwlShakeBridgeViewController()
+        bridge.view.accessibilityIdentifier = bridgeMarker
+        root.addChild(bridge)
+        root.view.addSubview(bridge.view)
+        bridge.view.frame = .zero
+        bridge.didMove(toParent: root)
+        bridge.refreshFirstResponder()
+    }
+
+    @MainActor
+    private static func keyWindow() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let foregroundWindows = scenes
+            .filter { $0.activationState == .foregroundActive }
+            .flatMap(\.windows)
+        if let activeKeyWindow = foregroundWindows.first(where: \.isKeyWindow) {
+            return activeKeyWindow
         }
 
-        if
-            let originalWindowBeganMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionBegan(_:with:))),
-            let swizzledWindowBeganMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionBegan(_:with:)))
-        {
-            method_exchangeImplementations(originalWindowBeganMethod, swizzledWindowBeganMethod)
+        let allWindows = scenes.flatMap(\.windows)
+        if let anyKeyWindow = allWindows.first(where: \.isKeyWindow) {
+            return anyKeyWindow
         }
-    }()
+        return allWindows.first
+    }
 
     static func postShakeDetected() {
         Task { @MainActor in
@@ -55,6 +82,39 @@ public enum ProwlShakeMonitor {
             lastPostedAt = now
             NotificationCenter.default.post(name: didShakeNotification, object: nil)
         }
+    }
+}
+
+@MainActor
+private final class ProwlShakeBridgeViewController: UIViewController {
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func loadView() {
+        let view = UIView(frame: .zero)
+        view.isHidden = true
+        view.isUserInteractionEnabled = false
+        self.view = view
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        _ = becomeFirstResponder()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        refreshFirstResponder()
+    }
+
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        super.motionEnded(motion, with: event)
+        guard motion == .motionShake else { return }
+        ProwlShakeMonitor.postShakeDetected()
+    }
+
+    func refreshFirstResponder() {
+        guard view.window != nil else { return }
+        _ = becomeFirstResponder()
     }
 }
 
@@ -77,27 +137,6 @@ public struct ProwlShakeDetector: View {
     }
 }
 
-private extension UIApplication {
-    @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
-        prowl_sendEvent(event)
-        guard event.type == .motion, event.subtype == .motionShake else { return }
-        ProwlShakeMonitor.postShakeDetected()
-    }
-}
-
-private extension UIWindow {
-    @objc dynamic func prowl_motionBegan(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        prowl_motionBegan(motion, with: event)
-        guard motion == .motionShake else { return }
-        ProwlShakeMonitor.postShakeDetected()
-    }
-
-    @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        prowl_motionEnded(motion, with: event)
-        guard motion == .motionShake else { return }
-        ProwlShakeMonitor.postShakeDetected()
-    }
-}
 #else
 public struct ProwlShakeDetector: View {
     public let onShake: () -> Void

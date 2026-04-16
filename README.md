@@ -2,7 +2,7 @@
 
 See the Unseen Stream.
 
-![Prowl Icon](Sources/prowl_icon.png)
+<img src="Sources/prowl_icon.png" alt="Prowl Icon" width="220" />
 
 Prowl is a lightweight, high-performance network debugging library for the Apple ecosystem (`iOS`, `macOS`, `watchOS`, `tvOS`, `visionOS`) built with native `Foundation` + `SwiftUI` and distributed via Swift Package Manager.
 

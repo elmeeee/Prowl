@@ -13,7 +13,7 @@ import ProwlCore
 @MainActor
 public enum Prowl {
     /// Semantic version of the distributed Prowl package.
-    public static let version = "0.5.6"
+    public static let version = "0.5.7"
 
     private static var isRunning = false
 
@@ -22,10 +22,13 @@ public enum Prowl {
     }
 
     /// URLs that should be ignored by Prowl's interceptor.
-    nonisolated(unsafe) public static var ignoredURLs: Set<String> = []
+    public static var ignoredURLs: Set<String> {
+        get { ProwlRuntime.ignoredURLs }
+        set { ProwlRuntime.ignoredURLs = newValue }
+    }
 
     public static func ignoreURL(_ urlString: String) {
-        ignoredURLs.insert(urlString)
+        ProwlRuntime.ignoredURLs.insert(urlString)
     }
 
     /// Registers `ProwlProtocol` once for process-wide interception.

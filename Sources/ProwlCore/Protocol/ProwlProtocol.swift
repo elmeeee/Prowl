@@ -17,7 +17,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
         
         if let absoluteString = request.url?.absoluteString {
-            for ignoredPattern in Prowl.ignoredURLs {
+            for ignoredPattern in ProwlRuntime.ignoredURLs {
                 if absoluteString.contains(ignoredPattern) {
                     return false
                 }

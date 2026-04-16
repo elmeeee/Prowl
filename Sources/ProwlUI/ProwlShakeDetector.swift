@@ -35,6 +35,13 @@ public enum ProwlShakeMonitor {
         {
             method_exchangeImplementations(originalWindowMethod, swizzledWindowMethod)
         }
+
+        if
+            let originalWindowBeganMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionBegan(_:with:))),
+            let swizzledWindowBeganMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionBegan(_:with:)))
+        {
+            method_exchangeImplementations(originalWindowBeganMethod, swizzledWindowBeganMethod)
+        }
     }()
 
     @MainActor
@@ -76,6 +83,12 @@ private extension UIApplication {
 }
 
 private extension UIWindow {
+    @objc dynamic func prowl_motionBegan(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        prowl_motionBegan(motion, with: event)
+        guard motion == .motionShake else { return }
+        ProwlShakeMonitor.postShakeDetected()
+    }
+
     @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         prowl_motionEnded(motion, with: event)
         guard motion == .motionShake else { return }

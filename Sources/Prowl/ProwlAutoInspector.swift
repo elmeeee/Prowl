@@ -20,6 +20,7 @@ enum ProwlAutoInspector {
 
     static func enable() {
         guard observer == nil else { return }
+        UIApplication.shared.applicationSupportsShakeToEdit = true
         ProwlShakeMonitor.installIfNeeded()
         observer = NotificationCenter.default.addObserver(
             forName: ProwlShakeMonitor.didShakeNotification,

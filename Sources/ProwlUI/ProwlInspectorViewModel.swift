@@ -56,7 +56,12 @@ public final class ProwlInspectorViewModel: ObservableObject {
 
     public func clearLogs() {
         Task {
-            let targetStorage = explicitStorage ?? (await ProwlRuntime.shared.currentStorage())
+            let targetStorage: ProwlStorage
+            if let explicitStorage = explicitStorage {
+                targetStorage = explicitStorage
+            } else {
+                targetStorage = await ProwlRuntime.shared.currentStorage()
+            }
             await targetStorage.clear()
         }
     }

@@ -24,19 +24,31 @@ public enum ProwlShakeMonitor {
     }
 
     private nonisolated(unsafe) static let installToken: Void = {
-        if
-            let originalAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
-            let swizzledAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
-        {
-            method_exchangeImplementations(originalAppMethod, swizzledAppMethod)
+        let swizzle: (AnyClass, Selector, Selector) -> Void = { c, original, swizzled in
+            guard let originalMethod = class_getInstanceMethod(c, original),
+                  let swizzledMethod = class_getInstanceMethod(c, swizzled) else { return }
+            
+            let didAddMethod = class_addMethod(
+                c,
+                original,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod)
+            )
+            
+            if didAddMethod {
+                class_replaceMethod(
+                    c,
+                    swizzled,
+                    method_getImplementation(originalMethod),
+                    method_getTypeEncoding(originalMethod)
+                )
+            } else {
+                method_exchangeImplementations(originalMethod, swizzledMethod)
+            }
         }
 
-        if
-            let originalWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionEnded(_:with:))),
-            let swizzledWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionEnded(_:with:)))
-        {
-            method_exchangeImplementations(originalWindowMethod, swizzledWindowMethod)
-        }
+        swizzle(UIApplication.self, #selector(UIApplication.sendEvent(_:)), #selector(UIApplication.prowl_sendEvent(_:)))
+        swizzle(UIWindow.self, #selector(UIWindow.motionEnded(_:with:)), #selector(UIWindow.prowl_motionEnded(_:with:)))
     }()
 
     static func postShakeDetected() {
@@ -71,7 +83,8 @@ public struct ProwlShakeDetector: View {
 }
 
 private extension UIApplication {
-    @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
+    @objc(prowl_sendEvent:) 
+    dynamic func prowl_sendEvent(_ event: UIEvent) {
         prowl_sendEvent(event)
         guard event.type == .motion, event.subtype == .motionShake else { return }
         ProwlShakeMonitor.postShakeDetected()
@@ -79,7 +92,8 @@ private extension UIApplication {
 }
 
 private extension UIWindow {
-    @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+    @objc(prowl_motionEnded:withEvent:) 
+    dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         prowl_motionEnded(motion, with: event)
         guard motion == .motionShake else { return }
         ProwlShakeMonitor.postShakeDetected()

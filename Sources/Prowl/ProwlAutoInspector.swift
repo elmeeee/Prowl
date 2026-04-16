@@ -12,9 +12,19 @@ import Foundation
 import SwiftUI
 import UIKit
 
+private class ProwlInspectorHostingController: UIHostingController<ProwlInspectorView> {
+    override init(rootView: ProwlInspectorView) {
+        super.init(rootView: rootView)
+        self.modalPresentationStyle = .pageSheet
+    }
+    
+    @MainActor required dynamic init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 @MainActor
 enum ProwlAutoInspector {
-    private static let inspectorMarker = "com.prowl.auto-inspector"
     private static var observer: NSObjectProtocol?
     private static var lastPresentationDate: Date?
 
@@ -27,7 +37,7 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 toggle()
             }
         }
@@ -64,7 +74,7 @@ enum ProwlAutoInspector {
 
         guard let window = keyWindow() else { return }
         guard let root = window.rootViewController else { return }
-        guard !isInspectorAlreadyPresented(from: root) else { return }
+        guard presentedInspectorController() == nil else { return }
         guard let topController = topMostViewController(from: root) else { return }
 
         guard !topController.isBeingPresented,
@@ -74,9 +84,7 @@ enum ProwlAutoInspector {
         }
 
         let inspectorView = ProwlInspectorView()
-        let hostController = UIHostingController(rootView: inspectorView)
-        hostController.view.accessibilityIdentifier = inspectorMarker
-        hostController.modalPresentationStyle = .pageSheet
+        let hostController = ProwlInspectorHostingController(rootView: inspectorView)
         topController.present(hostController, animated: true)
         lastPresentationDate = Date()
     }
@@ -84,50 +92,51 @@ enum ProwlAutoInspector {
     private static func topMostViewController(
         from controller: UIViewController?
     ) -> UIViewController? {
+        guard let controller else { return nil }
+
+        // We MUST verify presentedViewController first, because if a UINavigationController
+        // has a modal presented over it, navigation.visibleViewController will miss the modal
+        // and mistakenly return the underlying UI.
+        if let presented = controller.presentedViewController {
+            return topMostViewController(from: presented)
+        }
         if let navigation = controller as? UINavigationController {
-            return topMostViewController(from: navigation.visibleViewController)
+            return topMostViewController(from: navigation.visibleViewController ?? navigation.topViewController)
         }
         if let tab = controller as? UITabBarController {
             return topMostViewController(from: tab.selectedViewController)
-        }
-        if let presented = controller?.presentedViewController {
-            return topMostViewController(from: presented)
         }
         return controller
     }
 
     private static func keyWindow() -> UIWindow? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        
         let foregroundWindows = scenes
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
+            // System windows (like text effects) might not have a root view controller
+            .filter { $0.rootViewController != nil }
+            
         if let activeKeyWindow = foregroundWindows.first(where: \.isKeyWindow) {
             return activeKeyWindow
         }
+        if let anyForeground = foregroundWindows.first {
+            return anyForeground
+        }
 
-        let allWindows = scenes.flatMap(\.windows)
+        let allWindows = scenes.flatMap(\.windows).filter { $0.rootViewController != nil }
         if let anyKeyWindow = allWindows.first(where: \.isKeyWindow) {
             return anyKeyWindow
         }
         return allWindows.first
     }
 
-    private static func isInspectorAlreadyPresented(from controller: UIViewController?) -> Bool {
-        var cursor = controller
-        while let current = cursor {
-            if current.view.accessibilityIdentifier == inspectorMarker {
-                return true
-            }
-            cursor = current.presentedViewController
-        }
-        return false
-    }
-
     private static func presentedInspectorController() -> UIViewController? {
         guard let root = keyWindow()?.rootViewController else { return nil }
         var cursor: UIViewController? = root
         while let current = cursor {
-            if current.view.accessibilityIdentifier == inspectorMarker {
+            if current is ProwlInspectorHostingController {
                 return current
             }
             cursor = current.presentedViewController

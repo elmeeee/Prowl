@@ -26,7 +26,7 @@ public enum ProwlJSONSyntaxHighlighter {
         let attributed = NSMutableAttributedString(
             string: text,
             attributes: [
-                .foregroundColor: ProwlPlatformColor.labelColor
+                .foregroundColor: defaultLabelColor
             ]
         )
 
@@ -42,6 +42,14 @@ public enum ProwlJSONSyntaxHighlighter {
     }
 
 #if canImport(UIKit) || canImport(AppKit)
+    private static var defaultLabelColor: ProwlPlatformColor {
+#if canImport(UIKit)
+        return .label
+#else
+        return .labelColor
+#endif
+    }
+
     private static func apply(pattern: String, color: ProwlPlatformColor, in attributed: NSMutableAttributedString) {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
         let range = NSRange(location: 0, length: attributed.string.utf16.count)

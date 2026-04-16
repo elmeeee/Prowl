@@ -16,6 +16,7 @@ import UIKit
 enum ProwlAutoInspector {
     private static let inspectorMarker = "com.prowl.auto-inspector"
     private static var observer: NSObjectProtocol?
+    private static var lastPresentationDate: Date?
 
     static func enable() {
         guard observer == nil else { return }
@@ -37,14 +38,18 @@ enum ProwlAutoInspector {
     }
 
     private static func presentIfNeeded() {
+        if let lastPresentationDate, Date().timeIntervalSince(lastPresentationDate) < 0.8 {
+            return
+        }
         guard let topController = topMostViewController() else { return }
-        guard topController.view.accessibilityIdentifier != inspectorMarker else { return }
+        guard !isInspectorAlreadyPresented(from: topController) else { return }
 
         let inspectorView = ProwlInspectorView()
         let hostController = UIHostingController(rootView: inspectorView)
         hostController.view.accessibilityIdentifier = inspectorMarker
         hostController.modalPresentationStyle = .automatic
         topController.present(hostController, animated: true)
+        lastPresentationDate = Date()
     }
 
     private static func topMostViewController(
@@ -65,8 +70,28 @@ enum ProwlAutoInspector {
     private static func keyWindow() -> UIWindow? {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
             .first(where: \.isKeyWindow)
+            ?? UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+            ?? UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first
+    }
+
+    private static func isInspectorAlreadyPresented(from controller: UIViewController?) -> Bool {
+        var cursor = controller
+        while let current = cursor {
+            if current.view.accessibilityIdentifier == inspectorMarker {
+                return true
+            }
+            cursor = current.presentedViewController
+        }
+        return false
     }
 }
 #endif

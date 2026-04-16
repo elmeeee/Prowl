@@ -21,8 +21,8 @@ public enum ProwlShakeMonitor {
 
     private static let installToken: Void = {
         guard
-            let originalMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionEnded(_:with:))),
-            let swizzledMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionEnded(_:with:)))
+            let originalMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
+            let swizzledMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
         else {
             return
         }
@@ -47,12 +47,12 @@ public struct ProwlShakeDetector: View {
                 onShake()
             }
     }
-}
+} 
 
-private extension UIWindow {
-    @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        prowl_motionEnded(motion, with: event)
-        guard motion == .motionShake else { return }
+private extension UIApplication {
+    @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
+        prowl_sendEvent(event)
+        guard event.type == .motion, event.subtype == .motionShake else { return }
         NotificationCenter.default.post(name: ProwlShakeMonitor.didShakeNotification, object: nil)
     }
 }

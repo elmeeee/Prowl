@@ -15,6 +15,14 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         if let isHandled = URLProtocol.property(forKey: handledKey, in: request) as? Bool, isHandled {
             return false
         }
+        
+        if let absoluteString = request.url?.absoluteString {
+            for ignoredPattern in Prowl.ignoredURLs {
+                if absoluteString.contains(ignoredPattern) {
+                    return false
+                }
+            }
+        }
 
         return true
     }

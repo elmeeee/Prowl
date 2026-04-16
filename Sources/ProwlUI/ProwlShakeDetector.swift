@@ -15,7 +15,7 @@ import ObjectiveC.runtime
 public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
 
-    private static let debounceInterval: TimeInterval = 0.25
+    private static let debounceInterval: TimeInterval = 1.5
     @MainActor
     private static var lastPostedAt: Date?
 

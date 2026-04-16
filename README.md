@@ -11,7 +11,7 @@ Prowl is a lightweight, high-performance network debugging library for the Apple
 - URL interception via `URLProtocol`
 - Thread-safe log storage via `actor`
 - FIFO log buffer (default `200`)
-- Sensitive data masking (`Authorization`, `Cookie`, `password`, `token`)
+- Opt-in sensitive data masking (e.g. `Authorization`, `password`)
 - SwiftUI inspector dashboard + detail tabs
 - Real-time search and status filtering
 - Export logs as formatted text or cURL commands
@@ -67,6 +67,26 @@ struct DemoApp: App {
 }
 ```
 
+### 2) Ignore Noise URLs (Optional)
+
+If your app heavily pings telemetry or third-party analytics (like Firebase, Mixpanel, etc.), you can cleanly exclude them from cluttering your Prowl logs.
+
+Pass an array of string partials directly when starting:
+
+```swift
+Prowl.start(ignoredURLs: [
+    "https://firebaselogging.googleapis.com",
+    "https://api.mixpanel.com/",
+    "https://app-analytics-services.com/"
+])
+```
+
+Alternatively, you can dynamically ignore URLs later at runtime:
+
+```swift
+Prowl.ignoreURL("https://res.cloudinary.com/")
+```
+
 ## Check Version
 
 You can expose/log the package version in your app:
@@ -77,7 +97,7 @@ import Prowl
 print("Prowl version:", Prowl.version)
 ```
 
-### 2) Open the inspector
+### 3) Open the inspector
 
 No extra view modifier is required.
 

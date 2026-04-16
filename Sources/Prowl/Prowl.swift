@@ -21,25 +21,35 @@ public enum Prowl {
         await ProwlRuntime.shared.currentStorage()
     }
 
+    /// URLs that should be ignored by Prowl's interceptor.
+    nonisolated(unsafe) public static var ignoredURLs: Set<String> = []
+
+    public static func ignoreURL(_ urlString: String) {
+        ignoredURLs.insert(urlString)
+    }
+
     /// Registers `ProwlProtocol` once for process-wide interception.
-    public static func start() {
+    public static func start(ignoredURLs: [String] = []) {
         guard !isRunning else { return }
+
+        ignoredURLs.forEach { ignoreURL($0) }
+
         URLProtocol.registerClass(ProwlProtocol.self)
-    #if os(iOS)
-        ProwlAutoInspector.enable()
-    #endif
+        #if os(iOS)
+            ProwlAutoInspector.enable()
+        #endif
         isRunning = true
-        
-        print("🐾 Prowl Inspector v\(version) started | Crafted by Elmee")
+
+        print("Prowl Inspector v\(version) started | Crafted by Elmee")
     }
 
     /// Unregisters `ProwlProtocol` to fully disable interception.
     public static func stop() {
         guard isRunning else { return }
         URLProtocol.unregisterClass(ProwlProtocol.self)
-    #if os(iOS)
-        ProwlAutoInspector.disable()
-    #endif
+        #if os(iOS)
+            ProwlAutoInspector.disable()
+        #endif
         isRunning = false
     }
 
@@ -48,17 +58,17 @@ public enum Prowl {
         if !isRunning {
             start()
         }
-    #if os(iOS)
-        ProwlAutoInspector.show()
-    #endif
+        #if os(iOS)
+            ProwlAutoInspector.show()
+        #endif
     }
 
     /// Hides Prowl inspector manually (iOS only).
     public static func hide() {
         guard isRunning else { return }
-    #if os(iOS)
-        ProwlAutoInspector.hide()
-    #endif
+        #if os(iOS)
+            ProwlAutoInspector.hide()
+        #endif
     }
 
     /// Toggles Prowl inspector manually (iOS only).
@@ -66,9 +76,9 @@ public enum Prowl {
         if !isRunning {
             start()
         }
-    #if os(iOS)
-        ProwlAutoInspector.toggle()
-    #endif
+        #if os(iOS)
+            ProwlAutoInspector.toggle()
+        #endif
     }
 
     /// Allows host apps to override defaults while preserving zero side-effects.

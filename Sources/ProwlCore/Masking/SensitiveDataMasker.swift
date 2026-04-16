@@ -6,8 +6,8 @@ public struct SensitiveDataMasker: Sendable {
     public let redactionToken: String
 
     public init(
-        sensitiveHeaders: Set<String> = ["authorization", "cookie"],
-        sensitiveJSONKeys: Set<String> = ["password", "token"],
+        sensitiveHeaders: Set<String> = [],
+        sensitiveJSONKeys: Set<String> = [],
         redactionToken: String = "[REDACTED]"
     ) {
         self.sensitiveHeaders = Set(sensitiveHeaders.map { $0.lowercased() })

@@ -13,6 +13,7 @@ public struct ProwlInspectorView: View {
     @StateObject private var viewModel: ProwlInspectorViewModel
     @State private var selectedLogID: NetworkLog.ID?
     @State private var iOSExportPayload: ProwlExportPayload?
+    @State private var isSettingsPresented = false
     
     @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
 
@@ -36,6 +37,16 @@ public struct ProwlInspectorView: View {
         .sheet(item: $iOSExportPayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
         }
+        #if os(macOS)
+        .sheet(isPresented: $isSettingsPresented) {
+            ProwlSettingsView(
+                viewModel: viewModel,
+                onExportText: { exportLogs(as: .formattedText) },
+                onExportCURL: { exportLogs(as: .curlCommands) }
+            )
+            .frame(minWidth: 560, minHeight: 520)
+        }
+        #endif
     }
 
     private var colorScheme: ColorScheme? {
@@ -100,7 +111,22 @@ public struct ProwlInspectorView: View {
         }
     #endif
 
-    #if !os(watchOS)
+    #if os(macOS)
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button(role: .destructive) {
+                viewModel.clearLogs()
+            } label: {
+                Image(systemName: "trash")
+            }
+            .tint(.red)
+
+            Button {
+                isSettingsPresented = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
+        }
+    #elseif !os(watchOS)
         ToolbarItemGroup(placement: .primaryAction) {
             Button(role: .destructive) {
                 viewModel.clearLogs()

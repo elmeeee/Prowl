@@ -36,6 +36,7 @@ public struct ProwlLogDetailView: View {
     @State private var selectedTab: Tab = .overview
     @State private var sharePayload: ProwlExportPayload?
     @State private var isMockEditorPresented = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public init(log: NetworkLog) {
         self.log = log
@@ -50,7 +51,7 @@ public struct ProwlLogDetailView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal)
+            .padding(.horizontal, segmentedPickerHorizontalPadding)
             .padding(.vertical, 8)
 
             Divider()
@@ -377,6 +378,14 @@ public struct ProwlLogDetailView: View {
             return Color(NSColor.controlBackgroundColor)
         #else
             return .clear
+        #endif
+    }
+
+    private var segmentedPickerHorizontalPadding: CGFloat {
+        #if os(iOS) || os(visionOS)
+            return horizontalSizeClass == .compact ? 20 : 16
+        #else
+            return 16
         #endif
     }
 

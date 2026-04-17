@@ -36,7 +36,10 @@ let package = Package(
         ),
         .target(
             name: "Prowl",
-            dependencies: ["ProwlCore", "ProwlUI"]
+            dependencies: ["ProwlCore", "ProwlUI"],
+            resources: [
+                .process("Resources/prowl_icon.png")
+            ]
         ),
         .testTarget(
             name: "ProwlTests",

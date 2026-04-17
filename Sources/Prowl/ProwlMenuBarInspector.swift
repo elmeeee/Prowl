@@ -55,10 +55,7 @@ enum ProwlMenuBarInspector {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.title = "Prowl"
-            button.image = NSImage(
-                systemSymbolName: "ladybug.fill",
-                accessibilityDescription: "Prowl Inspector"
-            )
+            button.image = menuBarIconImage()
             button.imagePosition = .imageLeading
             button.toolTip = "Open Prowl Inspector"
         }
@@ -98,6 +95,20 @@ enum ProwlMenuBarInspector {
         menuActionHandler = actionHandler
     }
 
+    private static func menuBarIconImage() -> NSImage? {
+        if let iconURL = Bundle.module.url(forResource: "prowl_icon", withExtension: "png"),
+           let icon = NSImage(contentsOf: iconURL) {
+            icon.size = NSSize(width: 18, height: 18)
+            icon.isTemplate = false
+            return icon
+        }
+
+        return NSImage(
+            systemSymbolName: "ladybug.fill",
+            accessibilityDescription: "Prowl Inspector"
+        )
+    }
+
     private static func ensureWindowController() -> NSWindowController {
         if let inspectorWindowController {
             return inspectorWindowController
@@ -107,7 +118,11 @@ enum ProwlMenuBarInspector {
         let window = NSWindow(contentViewController: host)
         window.title = "Prowl Inspector"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.styleMask.remove(.fullSizeContentView)
+        window.titlebarAppearsTransparent = false
+        window.toolbarStyle = .expanded
         window.setContentSize(NSSize(width: 980, height: 680))
+        window.minSize = NSSize(width: 860, height: 560)
         window.isReleasedWhenClosed = false
 
         let controller = NSWindowController(window: window)

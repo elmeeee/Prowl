@@ -10,9 +10,9 @@ import ProwlCore
 import SwiftUI
 
 #if os(iOS) || os(visionOS)
-    import UIKit
+import UIKit
 #elseif os(macOS)
-    import AppKit
+import AppKit
 #endif
 
 public struct ProwlLogDetailView: View {
@@ -20,25 +20,26 @@ public struct ProwlLogDetailView: View {
         case overview = "Overview"
         case headers = "Headers"
         case body = "Body"
-
         public var id: String { rawValue }
     }
 
     private static let timestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .medium
-        return formatter
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .medium
+        return f
     }()
 
     public let log: NetworkLog
+
+    @StateObject private var viewModel: ProwlLogDetailViewModel
     @State private var selectedTab: Tab = .overview
     @State private var sharePayload: ProwlExportPayload?
-    @State private var isBodyPretty: Bool = true
-    @State private var isMockEditorPresented: Bool = false
+    @State private var isMockEditorPresented = false
 
     public init(log: NetworkLog) {
         self.log = log
+        _viewModel = StateObject(wrappedValue: ProwlLogDetailViewModel(log: log))
     }
 
     public var body: some View {
@@ -56,12 +57,9 @@ public struct ProwlLogDetailView: View {
 
             Group {
                 switch selectedTab {
-                case .overview:
-                    overviewView
-                case .headers:
-                    headersView
-                case .body:
-                    bodyView
+                case .overview: overviewView
+                case .headers: headersView
+                case .body: bodyView
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -74,19 +72,21 @@ public struct ProwlLogDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Share JSON") {
-                        shareCurrentLogJSON()
-                    }
-                    Button("Share cURL") {
-                        shareCurrentLogCURL()
-                    }
-                    Button("Create Mock") {
-                        isMockEditorPresented = true
-                    }
+                    Button("Share JSON") { viewModel.handle(.shareJSON) }
+                    Button("Share cURL") { viewModel.handle(.shareCURL) }
+                    Button("Create Mock") { isMockEditorPresented = true }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
             }
+        }
+        .onChange(of: viewModel.shareContent) { content in
+            if let content {
+                sharePayload = ProwlExportPayload(content: content)
+            }
+        }
+        .onChange(of: viewModel.pasteboardString) { str in
+            if let str { copyToPasteboard(str) }
         }
         .sheet(item: $sharePayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
@@ -99,7 +99,6 @@ public struct ProwlLogDetailView: View {
     private var overviewView: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Header Metrics: Status & Method
                 HStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("STATUS")
@@ -108,9 +107,9 @@ public struct ProwlLogDetailView: View {
                         statusBadge(statusCode: log.statusCode)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                     Divider()
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text("METHOD")
                             .font(.caption2.weight(.bold))
@@ -123,17 +122,15 @@ public struct ProwlLogDetailView: View {
                 .background(platformSecondaryBackground)
                 .cornerRadius(16)
 
-                // Timing Component
                 timingCard
 
-                // Path & Routing Breakdown
                 VStack(spacing: 16) {
                     urlSection(title: "HOST", value: log.url?.host ?? "")
                     Divider()
                     urlSection(title: "PATH", value: log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
                     Divider()
                     urlSection(title: "FULL URL", value: log.url?.absoluteString ?? "-")
-                    
+
                     if let err = log.errorDescription {
                         Divider()
                         urlSection(title: "ERROR", value: err, emphasized: true)
@@ -180,7 +177,6 @@ public struct ProwlLogDetailView: View {
             Text(title)
                 .font(.caption2.weight(.bold))
                 .foregroundColor(.secondary)
-            
             Text(value)
                 .font(.body.monospaced())
                 .foregroundColor(emphasized ? .red : .primary)
@@ -188,6 +184,136 @@ public struct ProwlLogDetailView: View {
                 .lineSpacing(4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var headersView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                headerSection(title: "Request Headers", headers: log.requestHeaders)
+                headerSection(title: "Response Headers", headers: log.responseHeaders)
+            }
+            .padding()
+        }
+    }
+
+    private func headerSection(title: String, headers: [String: String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title).font(.headline)
+                Spacer()
+                if !headers.isEmpty {
+                    Button("Copy") {
+                        let text = headers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+                        copyToPasteboard(text)
+                    }
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1), in: Capsule())
+                }
+            }
+
+            if headers.isEmpty {
+                Text("No headers").font(.caption).foregroundColor(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    let sortedKeys = headers.keys.sorted()
+                    ForEach(Array(sortedKeys.enumerated()), id: \.element) { index, key in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text(key)
+                                .font(.caption.weight(.bold))
+                                .frame(width: 120, alignment: .leading)
+                            Text(headers[key] ?? "")
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(index % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
+                    }
+                }
+                .background(platformSecondaryBackground)
+                .cornerRadius(8)
+            }
+        }
+    }
+
+    private var bodyView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Toggle("Pretty Print JSON", isOn: Binding(
+                    get: { viewModel.isPretty },
+                    set: { _ in viewModel.handle(.togglePrettyPrint) }
+                ))
+                .font(.subheadline.weight(.medium))
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                renderableSection(title: "Request Body", renderable: viewModel.requestBody, isRequest: true)
+                renderableSection(title: "Response Body", renderable: viewModel.responseBody, isRequest: false)
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
+    @ViewBuilder
+    private func renderableSection(title: String, renderable: ProwlBodyRenderable, isRequest: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title).font(.headline).padding(.horizontal)
+                Spacer()
+                if case .empty = renderable { } else {
+                    Button("Copy") { viewModel.handle(.copyBody(isRequest: isRequest)) }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1), in: Capsule())
+                        .padding(.trailing)
+                }
+            }
+
+            switch renderable {
+            case .text(let attributed):
+                Text(attributed)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(platformSecondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+
+            case .image(let data):
+                imageView(data: data)
+
+            case .empty:
+                Text("No body")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func imageView(data: Data) -> some View {
+        #if os(iOS) || os(visionOS)
+        if let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: 300)
+                .cornerRadius(12)
+                .padding(.horizontal)
+        }
+        #elseif os(macOS)
+        if let nsImage = NSImage(data: data) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: 300)
+                .cornerRadius(12)
+                .padding(.horizontal)
+        }
+        #endif
     }
 
     @ViewBuilder
@@ -234,163 +360,6 @@ public struct ProwlLogDetailView: View {
         }
     }
 
-    private var headersView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                headerSection(title: "Request Headers", headers: log.requestHeaders)
-                headerSection(title: "Response Headers", headers: log.responseHeaders)
-            }
-            .padding()
-        }
-    }
-
-    private func headerSection(title: String, headers: [String: String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                if !headers.isEmpty {
-                    Button("Copy") {
-                        let text = headers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
-                        copyToPasteboard(text)
-                    }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1), in: Capsule())
-                }
-            }
-
-            if headers.isEmpty {
-                Text("No headers")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                VStack(spacing: 0) {
-                    let sortedKeys = headers.keys.sorted()
-                    ForEach(Array(sortedKeys.enumerated()), id: \.element) { index, key in
-                        HStack(alignment: .top, spacing: 12) {
-                            Text(key)
-                                .font(.caption.weight(.bold))
-                                .frame(width: 120, alignment: .leading)
-                            Text(headers[key] ?? "")
-                                .font(.caption.monospaced())
-                                .textSelection(.enabled)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 12)
-                        .background(index % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
-                    }
-                }
-                .background(platformSecondaryBackground)
-                .cornerRadius(8)
-            }
-        }
-    }
-
-    private var bodyView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Toggle("Pretty Print JSON", isOn: $isBodyPretty)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                bodySection(title: "Request Body", body: log.requestBody)
-                bodySection(title: "Response Body", body: log.responseBody)
-            }
-            .padding(.bottom, 24)
-        }
-    }
-
-    @ViewBuilder
-    private func bodySection(title: String, body: NetworkLog.Body?) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .padding(.horizontal)
-                Spacer()
-                if let body, !body.data.isEmpty {
-                    Button("Copy") {
-                        let text = bodyText(from: body, pretty: isBodyPretty)
-                        copyToPasteboard(text)
-                    }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1), in: Capsule())
-                    .padding(.trailing)
-                }
-            }
-
-            if let body, !body.data.isEmpty {
-                let isImage = body.contentType?.lowercased().contains("image") ?? false
-                #if os(iOS) || os(visionOS)
-                if isImage, let uiImage = UIImage(data: body.data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 300)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                } else {
-                    renderTextBody(body: body)
-                }
-                #elseif os(macOS)
-                if isImage, let nsImage = NSImage(data: body.data) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 300)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                } else {
-                    renderTextBody(body: body)
-                }
-                #else
-                renderTextBody(body: body)
-                #endif
-            } else {
-                Text("No body")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-            }
-        }
-    }
-
-    private func renderTextBody(body: NetworkLog.Body) -> some View {
-        let rendered = bodyText(from: body, pretty: isBodyPretty)
-        return Text(ProwlJSONSyntaxHighlighter.highlight(rendered, contentType: body.contentType))
-            .font(.caption.monospaced())
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(platformSecondaryBackground, in: RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
-    }
-
-    // MARK: - Helpers
-
-    private func bodyText(from body: NetworkLog.Body, pretty: Bool) -> String {
-        if pretty {
-            return ProwlLogFormatter.prettyBodyText(from: body)
-        } else {
-            return String(data: body.data, encoding: .utf8) ?? body.data.base64EncodedString()
-        }
-    }
-
-    private func copyToPasteboard(_ string: String) {
-        #if os(iOS) || os(visionOS)
-            UIPasteboard.general.string = string
-        #elseif os(macOS)
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(string, forType: .string)
-        #endif
-    }
-
     private var platformBackground: Color {
         #if os(iOS) || os(visionOS)
             return Color(UIColor.systemGroupedBackground)
@@ -411,51 +380,14 @@ public struct ProwlLogDetailView: View {
         #endif
     }
 
-    private func shareCurrentLogJSON() {
-        var logDict: [String: Any] = [
-            "id": log.id.uuidString,
-            "url": log.url?.absoluteString ?? "",
-            "method": log.method,
-            "startedAt": Self.timestampFormatter.string(from: log.startedAt),
-            "duration": log.duration,
-            "requestHeaders": log.requestHeaders,
-            "responseHeaders": log.responseHeaders,
-        ]
-
-        if let statusCode = log.statusCode {
-            logDict["statusCode"] = statusCode
-        } else {
-            logDict["error"] = log.errorDescription ?? ""
-        }
-
-        if let req = log.requestBody {
-            if let obj = try? JSONSerialization.jsonObject(with: req.data) {
-                logDict["requestBody"] = obj
-            } else if let str = String(data: req.data, encoding: .utf8) {
-                logDict["requestBody"] = str
-            }
-        }
-
-        if let res = log.responseBody {
-            if let obj = try? JSONSerialization.jsonObject(with: res.data) {
-                logDict["responseBody"] = obj
-            } else if let str = String(data: res.data, encoding: .utf8) {
-                logDict["responseBody"] = str
-            }
-        }
-
-        let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys]
-
-        if let data = try? JSONSerialization.data(withJSONObject: logDict, options: options),
-            let string = String(data: data, encoding: .utf8)
-        {
-            sharePayload = ProwlExportPayload(content: string)
-        }
-    }
-
-    private func shareCurrentLogCURL() {
-        let content = ProwlLogFormatter.export(logs: [log], as: .curlCommands)
-        sharePayload = ProwlExportPayload(content: content)
+    private func copyToPasteboard(_ string: String) {
+        #if os(iOS) || os(visionOS)
+            UIPasteboard.general.string = string
+        #elseif os(macOS)
+            let p = NSPasteboard.general
+            p.clearContents()
+            p.setString(string, forType: .string)
+        #endif
     }
 }
 
@@ -469,22 +401,20 @@ struct ProwlLogDetailView_Previews: PreviewProvider {
             requestHeaders: ["Authorization": "Bearer sample_token", "Accept": "application/json"],
             requestBody: nil,
             responseHeaders: ["Content-Type": "application/json"],
-            responseBody: .init(data: """
-            {
-                "status": "success",
-                "message": "Monthly report generated successfully.",
-                "data": {
-                    "total_users": 1542,
-                    "active_sessions": 312
+            responseBody: .init(
+                data: """
+                {
+                    "status": "success",
+                    "data": { "total_users": 1542, "active_sessions": 312 }
                 }
-            }
-            """.data(using: .utf8)!, contentType: "application/json"),
+                """.data(using: .utf8)!,
+                contentType: "application/json"
+            ),
             statusCode: 200,
             startedAt: Date().addingTimeInterval(-1.5),
             duration: 0.213,
             errorDescription: nil
         )
-
         NavigationView {
             ProwlLogDetailView(log: dummyLog)
         }

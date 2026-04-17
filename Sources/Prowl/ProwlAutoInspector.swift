@@ -7,7 +7,6 @@
 //
 
 import Foundation
-
 #if os(iOS)
 import SwiftUI
 import UIKit
@@ -110,7 +109,6 @@ enum ProwlAutoInspector {
         let foregroundWindows = scenes
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
-            // System windows (like text effects) might not have a root view controller
             .filter { $0.rootViewController != nil }
             
         if let activeKeyWindow = foregroundWindows.first(where: \.isKeyWindow) {

@@ -23,17 +23,34 @@ public final class ProwlInspectorViewModel: ObservableObject {
         self.explicitStorage = storage
         streamTask = Task { [weak self] in
             guard let self else { return }
+
             let resolvedStorage: ProwlStorage
             if let storage {
                 resolvedStorage = storage
             } else {
                 resolvedStorage = await ProwlRuntime.shared.currentStorage()
             }
+
+            // ✅ Eagerly snapshot any logs already captured before the Inspector opened.
+            // stream() yields the current buffer on subscription, so this covers
+            // sessions that started before the view was on screen.
+            
+            // Step 1: Immediately show whatever is already in the buffer (no waiting for stream)
+            let existingLogs = await resolvedStorage.allLogs()
+            if !existingLogs.isEmpty {
+                let sorted = existingLogs.sorted { $0.startedAt > $1.startedAt }
+                await MainActor.run { self.logs = sorted }
+            }
+            
+            // Step 2: Subscribe to live stream for all subsequent updates
             let stream = await resolvedStorage.stream()
 
             for await entries in stream {
+                // Guard: task may be cancelled while awaiting the next value
+                guard !Task.isCancelled else { return }
+                let sorted = entries.sorted { $0.startedAt > $1.startedAt }
                 await MainActor.run {
-                    self.logs = entries.sorted(by: { $0.startedAt > $1.startedAt })
+                    self.logs = sorted
                 }
             }
         }

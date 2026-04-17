@@ -92,15 +92,15 @@ public struct ProwlInspectorView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-#if os(iOS)
+    #if os(iOS)
         ToolbarItem(placement: .navigationBarLeading) {
             Button("Dismiss") {
                 dismiss()
             }
         }
-#endif
+    #endif
 
-#if !os(watchOS)
+    #if !os(watchOS)
         ToolbarItemGroup(placement: .primaryAction) {
             Button(role: .destructive) {
                 viewModel.clearLogs()
@@ -117,7 +117,7 @@ public struct ProwlInspectorView: View {
                 Image(systemName: "gearshape")
             }
         }
-#else
+    #else
         ToolbarItem(placement: .primaryAction) {
             NavigationLink(destination: ProwlSettingsView(
                 viewModel: viewModel,
@@ -127,7 +127,7 @@ public struct ProwlInspectorView: View {
                 Image(systemName: "gearshape")
             }
         }
-#endif
+    #endif
     }
 
     private var selectedLog: NetworkLog? {

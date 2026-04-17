@@ -95,8 +95,6 @@ public struct ProwlSettingsView: View {
         .navigationTitle("Settings")
     }
 
-    // MARK: - Stats Helpers
-
     private var successRateString: String {
         let total = viewModel.logs.count
         guard total > 0 else { return "0%" }
@@ -109,11 +107,9 @@ public struct ProwlSettingsView: View {
         viewModel.logs.filter { ($0.statusCode ?? 0) >= 400 || $0.errorDescription != nil }.count
     }
 
-    // MARK: - Device Info Helpers
-
     private var appName: String {
         (Bundle.main.infoDictionary?["CFBundleName"] as? String) ?? 
-        (Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String) ?? "Unknown App"
+        (Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String) ?? ""
     }
 
     private var appVersion: String {
@@ -127,22 +123,22 @@ public struct ProwlSettingsView: View {
     }
 
     private var osVersion: String {
-#if os(iOS) || os(visionOS)
+    #if os(iOS) || os(visionOS)
         return "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-#elseif os(macOS)
+    #elseif os(macOS)
         return "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
-#else
+    #else
         return "Unknown OS"
-#endif
+    #endif
     }
 
     private var screenResolution: String {
-#if os(iOS) || os(visionOS)
+    #if os(iOS) || os(visionOS)
         let bounds = UIScreen.main.bounds
         return "\(Int(bounds.width)) x \(Int(bounds.height))"
-#else
+    #else
         return "Undefined"
-#endif
+    #endif
     }
 
     private func labeledStatRow(title: String, value: String) -> some View {

@@ -18,7 +18,7 @@ private typealias ProwlPlatformColor = NSColor
 
 public enum ProwlJSONSyntaxHighlighter {
     public static func highlight(_ text: String, contentType: String?) -> AttributedString {
-#if canImport(UIKit) || canImport(AppKit)
+    #if canImport(UIKit) || canImport(AppKit)
         guard isJSON(contentType: contentType) else {
             return AttributedString(text)
         }
@@ -36,18 +36,18 @@ public enum ProwlJSONSyntaxHighlighter {
         apply(pattern: #"\b(true|false|null)\b"#, color: .systemPurple, in: attributed)
 
         return AttributedString(attributed)
-#else
+    #else
         return AttributedString(text)
-#endif
+    #endif
     }
 
-#if canImport(UIKit) || canImport(AppKit)
+    #if canImport(UIKit) || canImport(AppKit)
     private static var defaultLabelColor: ProwlPlatformColor {
-#if canImport(UIKit)
+    #if canImport(UIKit)
         return .label
-#else
+    #else
         return .labelColor
-#endif
+    #endif
     }
 
     private static func apply(pattern: String, color: ProwlPlatformColor, in attributed: NSMutableAttributedString) {
@@ -58,7 +58,7 @@ public enum ProwlJSONSyntaxHighlighter {
             attributed.addAttribute(.foregroundColor, value: color, range: match.range)
         }
     }
-#endif
+    #endif
 
     private static func isJSON(contentType: String?) -> Bool {
         guard let contentType else { return false }

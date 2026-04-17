@@ -51,8 +51,19 @@ public final class ProwlInspectorViewModel: ObservableObject {
 
     private func matchesSearch(_ log: NetworkLog) -> Bool {
         guard !searchText.isEmpty else { return true }
-        let haystack = log.url?.absoluteString.lowercased() ?? ""
-        return haystack.contains(searchText.lowercased())
+        let query = searchText.lowercased()
+        
+        if (log.url?.absoluteString.lowercased() ?? "").contains(query) { return true }
+        if log.method.lowercased().contains(query) { return true }
+        if let code = log.statusCode, String(code).contains(query) { return true }
+        
+        if log.requestHeaders.values.contains(where: { $0.lowercased().contains(query) }) { return true }
+        if log.responseHeaders.values.contains(where: { $0.lowercased().contains(query) }) { return true }
+        
+        if let resBody = log.responseBody, let text = String(data: resBody.data, encoding: .utf8), text.lowercased().contains(query) { return true }
+        if let reqBody = log.requestBody, let text = String(data: reqBody.data, encoding: .utf8), text.lowercased().contains(query) { return true }
+        
+        return false
     }
 
     public func clearLogs() {

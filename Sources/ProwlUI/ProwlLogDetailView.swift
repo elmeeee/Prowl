@@ -35,6 +35,7 @@ public struct ProwlLogDetailView: View {
     @State private var selectedTab: Tab = .overview
     @State private var sharePayload: ProwlExportPayload?
     @State private var isBodyPretty: Bool = true
+    @State private var isMockEditorPresented: Bool = false
 
     public init(log: NetworkLog) {
         self.log = log
@@ -79,6 +80,9 @@ public struct ProwlLogDetailView: View {
                     Button("Share cURL") {
                         shareCurrentLogCURL()
                     }
+                    Button("Create Mock") {
+                        isMockEditorPresented = true
+                    }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
@@ -86,6 +90,9 @@ public struct ProwlLogDetailView: View {
         }
         .sheet(item: $sharePayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
+        }
+        .sheet(isPresented: $isMockEditorPresented) {
+            ProwlMockEditorView(log: log)
         }
     }
 

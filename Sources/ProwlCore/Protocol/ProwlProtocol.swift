@@ -45,18 +45,36 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         let config = URLSessionConfiguration.default
         config.protocolClasses = (config.protocolClasses ?? []).filter { $0 != ProwlProtocol.self }
 
-        session = URLSession(configuration: config)
-        dataTask = session?.dataTask(with: proxiedRequest) { [weak self] data, response, error in
-            guard let self else { return }
-            self.complete(
-                request: proxiedRequest,
-                startedAt: startedAt,
-                data: data ?? Data(),
-                response: response,
-                error: error
-            )
+        Task {
+            if let mockRule = await ProwlMocker.shared.findMatch(for: proxiedRequest) {
+                // Return MOCK!
+                let mockURL = proxiedRequest.url ?? URL(string: "https://prowl.mock")!
+                let mockResponse = HTTPURLResponse(url: mockURL, statusCode: mockRule.mockStatusCode, httpVersion: "HTTP/1.1", headerFields: mockRule.mockHeaders)
+                
+                self.complete(
+                    request: proxiedRequest,
+                    startedAt: startedAt,
+                    data: mockRule.mockBody,
+                    response: mockResponse,
+                    error: nil
+                )
+                return
+            }
+            
+            // Proceed normally if no mock
+            self.session = URLSession(configuration: config)
+            self.dataTask = self.session?.dataTask(with: proxiedRequest) { [weak self] data, response, error in
+                guard let self else { return }
+                self.complete(
+                    request: proxiedRequest,
+                    startedAt: startedAt,
+                    data: data ?? Data(),
+                    response: response,
+                    error: error
+                )
+            }
+            self.dataTask?.resume()
         }
-        dataTask?.resume()
     }
 
     override public func stopLoading() {

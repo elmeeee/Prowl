@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.5.14"
+    public static let version = "0.5.15"
 
     private static var isRunning = false
 
@@ -50,7 +50,7 @@ public enum Prowl {
         #endif
         isRunning = true
 
-        print("Prowl Inspector v\(version) started | Crafted by Elmee")
+        print("[\(version)] Prowl Inspector started | Crafted by Elmee")
     }
 
     /// Unregisters `ProwlProtocol` to fully disable interception.

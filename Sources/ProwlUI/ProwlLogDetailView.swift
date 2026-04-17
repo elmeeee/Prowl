@@ -82,16 +82,21 @@ public struct ProwlLogDetailView: View {
             }
         }
         .onChange(of: viewModel.shareContent) { content in
-            if let content {
-                sharePayload = ProwlExportPayload(content: content)
-            }
+            guard let content else { return }
+            #if os(macOS)
+            ProwlMacExporter.save(content: content, suggestedFileName: "prowl-log.txt")
+            #else
+            sharePayload = ProwlExportPayload(content: content)
+            #endif
         }
         .onChange(of: viewModel.pasteboardString) { str in
             if let str { copyToPasteboard(str) }
         }
+        #if os(iOS) || os(visionOS)
         .sheet(item: $sharePayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
         }
+        #endif
         .sheet(isPresented: $isMockEditorPresented) {
             ProwlMockEditorView(log: log)
         }

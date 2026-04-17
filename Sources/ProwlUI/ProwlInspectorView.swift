@@ -34,9 +34,11 @@ public struct ProwlInspectorView: View {
             #endif
         }
         .preferredColorScheme(colorScheme)
+        #if os(iOS) || os(visionOS)
         .sheet(item: $iOSExportPayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
         }
+        #endif
         #if os(macOS)
         .sheet(isPresented: $isSettingsPresented) {
             ProwlSettingsView(

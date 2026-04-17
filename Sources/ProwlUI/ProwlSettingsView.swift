@@ -145,8 +145,12 @@ public struct ProwlSettingsView: View {
 
                 macSection("Export & Share") {
                     HStack(spacing: 10) {
-                        exportJSONButton
-                        exportCURLButton
+                        ShareLink(item: formattedTextExportContent) {
+                            Label("Share / Email Logs (JSON)", systemImage: "envelope")
+                        }
+                        ShareLink(item: curlExportContent) {
+                            Label("Share cURL Commands", systemImage: "terminal")
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                 }
@@ -223,6 +227,14 @@ public struct ProwlSettingsView: View {
     #else
         return "Undefined"
     #endif
+    }
+
+    private var formattedTextExportContent: String {
+        ProwlLogFormatter.export(logs: viewModel.filteredLogs, as: .formattedText)
+    }
+
+    private var curlExportContent: String {
+        ProwlLogFormatter.export(logs: viewModel.filteredLogs, as: .curlCommands)
     }
 
     private var exportJSONButton: some View {

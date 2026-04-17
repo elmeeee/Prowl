@@ -56,9 +56,13 @@ public final class ProwlLogDetailViewModel: ObservableObject {
             pasteboardString = ProwlLogFormatter.bodyText(from: body, pretty: isPretty)
 
         case .shareJSON:
+            // Force value transition so the view receives change events
+            // even when the generated payload is identical to previous share.
+            shareContent = nil
             shareContent = buildJSONShare()
 
         case .shareCURL:
+            shareContent = nil
             shareContent = ProwlLogFormatter.export(logs: [log], as: .curlCommands)
         }
     }

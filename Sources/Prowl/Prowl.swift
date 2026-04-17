@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.5.12"
+    public static let version = "0.5.13"
 
     private static var isRunning = false
 
@@ -45,6 +45,8 @@ public enum Prowl {
         URLProtocol.registerClass(ProwlProtocol.self)
         #if os(iOS)
             ProwlAutoInspector.enable()
+        #elseif os(macOS)
+            ProwlMenuBarInspector.enable()
         #endif
         isRunning = true
 
@@ -57,6 +59,8 @@ public enum Prowl {
         URLProtocol.unregisterClass(ProwlProtocol.self)
         #if os(iOS)
             ProwlAutoInspector.disable()
+        #elseif os(macOS)
+            ProwlMenuBarInspector.disable()
         #endif
         isRunning = false
     }
@@ -68,6 +72,8 @@ public enum Prowl {
         }
         #if os(iOS)
             ProwlAutoInspector.show()
+        #elseif os(macOS)
+            ProwlMenuBarInspector.show()
         #endif
     }
 
@@ -76,6 +82,8 @@ public enum Prowl {
         guard isRunning else { return }
         #if os(iOS)
             ProwlAutoInspector.hide()
+        #elseif os(macOS)
+            ProwlMenuBarInspector.hide()
         #endif
     }
 
@@ -86,6 +94,8 @@ public enum Prowl {
         }
         #if os(iOS)
             ProwlAutoInspector.toggle()
+        #elseif os(macOS)
+            ProwlMenuBarInspector.toggle()
         #endif
     }
 

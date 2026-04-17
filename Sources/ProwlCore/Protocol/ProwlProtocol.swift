@@ -125,7 +125,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             let statusStr = log.statusCode.map { "\($0)" } ?? "ERR"
             let hostStr = log.url?.host ?? ""
             let pathStr = log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/"
-            print("🐾 [Prowl] \(log.method) \(statusStr) \(hostStr)\(pathStr) (\(String(format: "%.3fs", log.duration)))")
+            print("[Prowl] \(log.method) \(statusStr) \(hostStr)\(pathStr) (\(String(format: "%.3fs", log.duration)))")
 
             await snapshot.storage.append(log)
         }

@@ -32,8 +32,8 @@ public enum ProwlLogFormatter {
     }
 
     public static func prettyBodyText(from body: NetworkLog.Body) -> String {
-        if isJSONContentType(body.contentType),
-           let object = try? JSONSerialization.jsonObject(with: body.data),
+        // Unconditionally attempt JSON formatting for maximum pretty-ness.
+        if let object = try? JSONSerialization.jsonObject(with: body.data),
            let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
            let string = String(data: prettyData, encoding: .utf8) {
             return string
@@ -47,19 +47,56 @@ public enum ProwlLogFormatter {
     }
 
     private static func formattedText(logs: [NetworkLog]) -> String {
-        logs.map { log in
-            [
-                "=== \(log.method) \(log.url?.absoluteString ?? "-")",
-                "Status: \(log.statusCode.map(String.init) ?? "N/A")",
-                "Started: \(log.startedAt)",
-                "Duration: \(String(format: "%.3f", log.duration))s",
-                "Request Headers: \(log.requestHeaders)",
-                "Response Headers: \(log.responseHeaders)",
-                "Request Body:\n\(log.requestBody.map(prettyBodyText(from:)) ?? "-")",
-                "Response Body:\n\(log.responseBody.map(prettyBodyText(from:)) ?? "-")",
-                "Error: \(log.errorDescription ?? "-")"
-            ].joined(separator: "\n")
-        }.joined(separator: "\n\n")
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        
+        return logs.map { log in
+            var components: [String] = []
+            
+            // INFO
+            components.append("** INFO **")
+            components.append("[URL]\n\(log.url?.absoluteString ?? "-")\n")
+            components.append("[Method]\n\(log.method)\n")
+            components.append("[Status]\n\(log.statusCode.map(String.init) ?? "N/A")\n")
+            
+            components.append("[Request date]\n\(dateFormatter.string(from: log.startedAt))\n")
+            components.append("[Response date]\n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))\n")
+            components.append("[Time interval]\n\(String(format: "%.6f", log.duration))\n")
+            
+            if let error = log.errorDescription {
+                components.append("[Error]\n\(error)\n")
+            }
+            
+            // REQUEST
+            components.append("** REQUEST **")
+            components.append("-- Headers --\n")
+            for key in log.requestHeaders.keys.sorted() {
+                components.append("[\(key)]\n\(log.requestHeaders[key] ?? "")\n")
+            }
+            
+            components.append("-- Body --\n")
+            if let requestBody = log.requestBody, !requestBody.data.isEmpty {
+                components.append("\(prettyBodyText(from: requestBody))\n")
+            } else {
+                components.append("Request body is empty\n")
+            }
+            
+            // RESPONSE
+            components.append("** RESPONSE **")
+            components.append("-- Headers --\n")
+            for key in log.responseHeaders.keys.sorted() {
+                components.append("[\(key)]\n\(log.responseHeaders[key] ?? "")\n")
+            }
+            
+            components.append("-- Body --\n")
+            if let responseBody = log.responseBody, !responseBody.data.isEmpty {
+                components.append("\(prettyBodyText(from: responseBody))\n")
+            } else {
+                components.append("Response body is empty\n")
+            }
+            
+            return components.joined(separator: "\n")
+        }.joined(separator: "\n\n--------------------------------------------------------------\n\n")
     }
 
     private static func curlBundle(logs: [NetworkLog]) -> String {

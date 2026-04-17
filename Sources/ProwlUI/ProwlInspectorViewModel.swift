@@ -13,6 +13,7 @@ import ProwlCore
 public final class ProwlInspectorViewModel: ObservableObject {
     @Published public var searchText = ""
     @Published public var statusFilter: ProwlStatusCategory = .all
+    @Published public var contentTypeFilter: ProwlContentTypeCategory = .all
     @Published public private(set) var logs: [NetworkLog] = []
 
     private var streamTask: Task<Void, Never>?
@@ -44,7 +45,7 @@ public final class ProwlInspectorViewModel: ObservableObject {
 
     public var filteredLogs: [NetworkLog] {
         logs.filter { log in
-            matchesSearch(log) && statusFilter.matches(log.statusCode)
+            matchesSearch(log) && statusFilter.matches(log.statusCode) && contentTypeFilter.matches(log)
         }
     }
 
@@ -63,6 +64,39 @@ public final class ProwlInspectorViewModel: ObservableObject {
                 targetStorage = await ProwlRuntime.shared.currentStorage()
             }
             await targetStorage.clear()
+        }
+    }
+}
+
+public enum ProwlContentTypeCategory: String, CaseIterable, Identifiable {
+    case all = "All Types"
+    case json = "JSON"
+    case xml = "XML"
+    case html = "HTML"
+    case image = "Image"
+    case other = "Other"
+
+    public var id: String { rawValue }
+
+    func matches(_ log: NetworkLog) -> Bool {
+        guard self != .all else { return true }
+        
+        let headerType = log.responseHeaders.first(where: { $0.key.lowercased() == "content-type" })?.value
+        let type = (log.responseBody?.contentType ?? headerType ?? "").lowercased()
+        
+        if type.isEmpty {
+            return self == .other
+        }
+        
+        switch self {
+        case .json: return type.contains("json")
+        case .xml: return type.contains("xml")
+        case .html: return type.contains("html")
+        case .image: return type.contains("image")
+        case .other:
+            let isKnown = type.contains("json") || type.contains("xml") || type.contains("html") || type.contains("image")
+            return !isKnown
+        case .all: return true
         }
     }
 }

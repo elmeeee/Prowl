@@ -13,6 +13,7 @@ public struct ProwlInspectorView: View {
     @StateObject private var viewModel: ProwlInspectorViewModel
     @State private var selectedLogID: NetworkLog.ID?
     @State private var iOSExportPayload: ProwlExportPayload?
+    @State private var isSettingsPresented = false
 
     public init(storage: ProwlStorage? = nil) {
         _viewModel = StateObject(wrappedValue: ProwlInspectorViewModel(storage: storage))
@@ -32,6 +33,13 @@ public struct ProwlInspectorView: View {
         }
         .sheet(item: $iOSExportPayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            ProwlSettingsView(
+                viewModel: viewModel,
+                onExportText: { exportLogs(as: .formattedText) },
+                onExportCURL: { exportLogs(as: .curlCommands) }
+            )
         }
     }
 
@@ -81,15 +89,15 @@ public struct ProwlInspectorView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-    #if os(iOS)
+#if os(iOS)
         ToolbarItem(placement: .navigationBarLeading) {
             Button("Dismiss") {
                 dismiss()
             }
         }
-    #endif
+#endif
 
-    #if !os(watchOS)
+#if !os(watchOS)
         ToolbarItemGroup(placement: .primaryAction) {
             Button(role: .destructive) {
                 viewModel.clearLogs()
@@ -97,36 +105,22 @@ public struct ProwlInspectorView: View {
                 Image(systemName: "trash")
             }
             .tint(.red)
-
-            Menu {
-                Picker("Status", selection: $viewModel.statusFilter) {
-                    ForEach(ProwlStatusCategory.allCases) { filter in
-                        Text(filter.title).tag(filter)
-                    }
-                }
-                
-                Section("Export") {
-                    Button("Formatted Text") {
-                        exportLogs(as: .formattedText)
-                    }
-                    Button("cURL Commands") {
-                        exportLogs(as: .curlCommands)
-                    }
-                }
+            
+            Button {
+                isSettingsPresented = true
             } label: {
-                Image(systemName: "ellipsis.circle")
+                Image(systemName: "gearshape")
             }
         }
-    #else
+#else
         ToolbarItem(placement: .primaryAction) {
-            Picker("Status", selection: $viewModel.statusFilter) {
-                ForEach(ProwlStatusCategory.allCases) { filter in
-                    Text(filter.title).tag(filter)
-                }
+            Button {
+                isSettingsPresented = true
+            } label: {
+                Image(systemName: "gearshape")
             }
-            .pickerStyle(.menu)
         }
-    #endif
+#endif
     }
 
     private var selectedLog: NetworkLog? {
@@ -147,11 +141,11 @@ public struct ProwlInspectorView: View {
         VStack(spacing: 16) {
             ZStack {
                 Circle()
-#if os(iOS)
+    #if os(iOS)
                     .fill(Color(UIColor.secondarySystemFill))
-#else
+    #else
                     .fill(Color.secondary.opacity(0.2))
-#endif
+    #endif
                     .frame(width: 88, height: 88)
                 
                 Image(systemName: "magnifyingglass")
@@ -195,7 +189,7 @@ struct ProwlInspectorView_Previews: PreviewProvider {
                         .task {
                             let dummyStorage = ProwlStorage(limit: 100)
                             let logs = [
-                                NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/engage"), method: "POST", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-10), duration: 0.402, errorDescription: nil),
+                                NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/engage"), method: "POST", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 500, startedAt: Date().addingTimeInterval(-10), duration: 0.402, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/track"), method: "POST", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-20), duration: 0.523, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api.dev.saldoo.app/image/bb-5-id.png"), method: "GET", requestHeaders: [:], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-30), duration: 0.001, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api-panel.dev.saldoo.app/image/com.d6ab7cf.png"), method: "GET", requestHeaders: [:], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-40), duration: 0.001, errorDescription: nil)

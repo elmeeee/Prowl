@@ -37,7 +37,7 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 toggle()
             }
         }
@@ -68,10 +68,6 @@ enum ProwlAutoInspector {
     }
 
     private static func presentIfNeeded() {
-        if let lastPresentationDate, Date().timeIntervalSince(lastPresentationDate) < 0.8 {
-            return
-        }
-
         guard let window = keyWindow() else { return }
         guard let root = window.rootViewController else { return }
         guard presentedInspectorController() == nil else { return }
@@ -86,7 +82,6 @@ enum ProwlAutoInspector {
         let inspectorView = ProwlInspectorView()
         let hostController = ProwlInspectorHostingController(rootView: inspectorView)
         topController.present(hostController, animated: true)
-        lastPresentationDate = Date()
     }
 
     private static func topMostViewController(

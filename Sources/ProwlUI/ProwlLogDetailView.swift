@@ -92,25 +92,49 @@ public struct ProwlLogDetailView: View {
     private var overviewView: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Header Metrics: Status & Method
+                HStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("STATUS")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(.secondary)
+                        statusBadge(statusCode: log.statusCode)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("METHOD")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(.secondary)
+                        methodBadge(log.method)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(16)
+                .background(platformSecondaryBackground)
+                .cornerRadius(16)
+
+                // Timing Component
                 timingCard
 
-                VStack(spacing: 0) {
-                    overviewRow(title: "URL", value: log.url?.absoluteString ?? "-")
-                    overviewRow(title: "Method", value: log.method)
-                    overviewRow(
-                        title: "Status", value: log.statusCode.map(String.init) ?? "No response",
-                        emphasized: !(200...299 ~= (log.statusCode ?? 0)))
-                    overviewRow(
-                        title: "Timestamp",
-                        value: Self.timestampFormatter.string(from: log.startedAt),
-                        isLast: log.errorDescription == nil)
-
+                // Path & Routing Breakdown
+                VStack(spacing: 16) {
+                    urlSection(title: "HOST", value: log.url?.host ?? "")
+                    Divider()
+                    urlSection(title: "PATH", value: log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
+                    Divider()
+                    urlSection(title: "FULL URL", value: log.url?.absoluteString ?? "-")
+                    
                     if let err = log.errorDescription {
-                        overviewRow(title: "Error", value: err, emphasized: true, isLast: true)
+                        Divider()
+                        urlSection(title: "ERROR", value: err, emphasized: true)
                     }
                 }
+                .padding(16)
                 .background(platformSecondaryBackground)
-                .cornerRadius(12)
+                .cornerRadius(16)
             }
             .padding()
         }
@@ -118,54 +142,89 @@ public struct ProwlLogDetailView: View {
 
     private var timingCard: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Total Duration")
-                    .font(.caption)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("TOTAL DURATION")
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(.secondary)
-                Text(String(format: "%.3fs", log.duration))
-                    .font(.title3.weight(.bold).monospacedDigit())
+                Text(String(format: "%.3f", log.duration))
+                    .font(.title2.weight(.bold).monospacedDigit())
+                    .foregroundColor(.primary)
+                + Text("s")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(.secondary)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Started At")
-                    .font(.caption)
+            VStack(alignment: .trailing, spacing: 6) {
+                Text("STARTED AT")
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(.secondary)
                 Text(Self.timestampFormatter.string(from: log.startedAt))
-                    .font(.subheadline.weight(.medium))
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
             }
         }
-        .padding()
+        .padding(16)
         .background(platformSecondaryBackground)
-        .cornerRadius(12)
+        .cornerRadius(16)
     }
 
-    private func overviewRow(
-        title: String, value: String, emphasized: Bool = false, isLast: Bool = false
-    ) -> some View {
-        HStack(alignment: .top) {
+    @ViewBuilder
+    private func urlSection(title: String, value: String, emphasized: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.subheadline)
+                .font(.caption2.weight(.bold))
                 .foregroundColor(.secondary)
-                .frame(width: 90, alignment: .leading)
-
+            
             Text(value)
-                .font(.subheadline.monospaced())
+                .font(.body.monospaced())
                 .foregroundColor(emphasized ? .red : .primary)
                 .textSelection(.enabled)
-                .multilineTextAlignment(.leading)
-
-            Spacer(minLength: 0)
+                .lineSpacing(4)
         }
-        .padding()
-        .overlay(
-            Group {
-                if !isLast {
-                    Divider()
-                        .padding(.leading, 106)  // Align with the value offset
-                }
-            },
-            alignment: .bottom
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func methodBadge(_ method: String) -> some View {
+        Text(method.uppercased())
+            .font(.caption.monospaced().weight(.bold))
+            .foregroundColor(methodColor(method))
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(methodColor(method).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private func statusBadge(statusCode: Int?) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor(statusCode))
+                .frame(width: 8, height: 8)
+            Text(statusCode.map { "\($0)" } ?? "ERR")
+                .font(.caption.monospaced().weight(.bold))
+                .foregroundColor(statusColor(statusCode))
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(statusColor(statusCode).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func methodColor(_ method: String) -> Color {
+        switch method.uppercased() {
+        case "GET": return .blue
+        case "POST": return .green
+        case "PUT", "PATCH": return .orange
+        case "DELETE": return .red
+        default: return .secondary
+        }
+    }
+
+    private func statusColor(_ statusCode: Int?) -> Color {
+        guard let code = statusCode else { return .red }
+        switch code {
+        case 200...299: return .green
+        case 300...399: return .blue
+        case 400...499: return .orange
+        case 500...599: return .red
+        default: return .secondary
+        }
     }
 
     private var headersView: some View {
@@ -329,7 +388,7 @@ public struct ProwlLogDetailView: View {
         if let statusCode = log.statusCode {
             logDict["statusCode"] = statusCode
         } else {
-            logDict["error"] = log.errorDescription ?? "Unknown"
+            logDict["error"] = log.errorDescription ?? ""
         }
 
         if let req = log.requestBody {
@@ -348,10 +407,7 @@ public struct ProwlLogDetailView: View {
             }
         }
 
-        var options: JSONSerialization.WritingOptions = [.prettyPrinted]
-        if #available(iOS 11.0, macOS 10.13, *) {
-            options.insert(.sortedKeys)
-        }
+        let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys]
 
         if let data = try? JSONSerialization.data(withJSONObject: logDict, options: options),
             let string = String(data: data, encoding: .utf8)
@@ -365,3 +421,36 @@ public struct ProwlLogDetailView: View {
         sharePayload = ProwlExportPayload(content: content)
     }
 }
+
+#if DEBUG
+struct ProwlLogDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        let dummyLog = NetworkLog(
+            requestID: UUID(),
+            url: URL(string: "https://api.dev.saldoo.app/report/monthly?user_id=123"),
+            method: "GET",
+            requestHeaders: ["Authorization": "Bearer sample_token", "Accept": "application/json"],
+            requestBody: nil,
+            responseHeaders: ["Content-Type": "application/json"],
+            responseBody: .init(data: """
+            {
+                "status": "success",
+                "message": "Monthly report generated successfully.",
+                "data": {
+                    "total_users": 1542,
+                    "active_sessions": 312
+                }
+            }
+            """.data(using: .utf8)!, contentType: "application/json"),
+            statusCode: 200,
+            startedAt: Date().addingTimeInterval(-1.5),
+            duration: 0.213,
+            errorDescription: nil
+        )
+
+        NavigationView {
+            ProwlLogDetailView(log: dummyLog)
+        }
+    }
+}
+#endif

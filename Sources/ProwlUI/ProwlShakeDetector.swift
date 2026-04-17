@@ -23,7 +23,7 @@ public enum ProwlShakeMonitor {
         _ = installToken
     }
 
-    private nonisolated(unsafe) static let installToken: Void = {
+    private static let installToken: Void = {
         if
             let originalAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
             let swizzledAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
@@ -40,7 +40,7 @@ public enum ProwlShakeMonitor {
     }()
 
     static func postShakeDetected() {
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             let now = Date()
             if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
                 return

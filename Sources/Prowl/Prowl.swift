@@ -26,6 +26,12 @@ public enum Prowl {
         get { ProwlRuntime.ignoredURLs }
         set { ProwlRuntime.ignoredURLs = newValue }
     }
+    
+    /// Optional custom URLSessionDelegate to handle Certificate Pinning / mTLS
+    public static var customSessionDelegate: URLSessionDelegate? {
+        get { ProwlRuntime.customSessionDelegate }
+        set { ProwlRuntime.customSessionDelegate = newValue }
+    }
 
     public static func ignoreURL(_ urlString: String) {
         ProwlRuntime.ignoredURLs.insert(urlString)

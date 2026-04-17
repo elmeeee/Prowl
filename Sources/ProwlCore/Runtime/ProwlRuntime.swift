@@ -4,6 +4,7 @@ public actor ProwlRuntime {
     public static let shared = ProwlRuntime()
     
     nonisolated(unsafe) public static var ignoredURLs: Set<String> = []
+    nonisolated(unsafe) public static var customSessionDelegate: URLSessionDelegate? = nil
 
     private var storage: ProwlStorage
     private var masker: SensitiveDataMasker

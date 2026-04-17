@@ -62,7 +62,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             }
             
             // Proceed normally if no mock
-            self.session = URLSession(configuration: config)
+            self.session = URLSession(configuration: config, delegate: ProwlRuntime.customSessionDelegate, delegateQueue: nil)
             self.dataTask = self.session?.dataTask(with: proxiedRequest) { [weak self] data, response, error in
                 guard let self else { return }
                 self.complete(

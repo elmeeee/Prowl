@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.5.11"
+    public static let version = "0.5.12"
 
     private static var isRunning = false
 

@@ -9,7 +9,6 @@
 import SwiftUI
 import ProwlCore
 
-/// Pure view — no service calls. All logic is delegated to ProwlMockEditorViewModel.
 public struct ProwlMockEditorView: View {
     @StateObject private var viewModel: ProwlMockEditorViewModel
     @Environment(\.dismiss) private var dismiss
@@ -30,13 +29,17 @@ public struct ProwlMockEditorView: View {
             Form {
                 Section(header: Text("Matcher Rules (URL Contains)")) {
                     TextField("Enter URL pattern to mock", text: $targetURLPattern)
+                        #if os(iOS)
                         .autocapitalization(.none)
+                        #endif
                         .disableAutocorrection(true)
                 }
 
                 Section(header: Text("Response Status Code")) {
                     TextField("e.g. 200, 404, 500", text: $mockStatusCodeStr)
+                        #if os(iOS)
                         .keyboardType(.numberPad)
+                        #endif
                 }
 
                 Section(header: Text("Response Body (JSON Mock)")) {
@@ -46,17 +49,21 @@ public struct ProwlMockEditorView: View {
                 }
             }
             .navigationTitle("Mock Endpoint")
-            .navigationBarItems(
-                leading: Button("Cancel") { dismiss() },
-                trailing: Button("Save & Enable") {
-                    viewModel.handle(.save(
-                        urlPattern: targetURLPattern,
-                        statusCodeStr: mockStatusCodeStr,
-                        bodyJSON: mockBodyJSONString
-                    ))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
-                .font(.headline)
-            )
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save & Enable") {
+                        viewModel.handle(.save(
+                            urlPattern: targetURLPattern,
+                            statusCodeStr: mockStatusCodeStr,
+                            bodyJSON: mockBodyJSONString
+                        ))
+                    }
+                    .font(.headline)
+                }
+            }
         }
         .onChange(of: viewModel.isSaved) { saved in
             if saved { dismiss() }

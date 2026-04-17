@@ -390,34 +390,3 @@ public struct ProwlLogDetailView: View {
         #endif
     }
 }
-
-#if DEBUG
-struct ProwlLogDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let dummyLog = NetworkLog(
-            requestID: UUID(),
-            url: URL(string: "https://api.dev.saldoo.app/report/monthly?user_id=123"),
-            method: "GET",
-            requestHeaders: ["Authorization": "Bearer sample_token", "Accept": "application/json"],
-            requestBody: nil,
-            responseHeaders: ["Content-Type": "application/json"],
-            responseBody: .init(
-                data: """
-                {
-                    "status": "success",
-                    "data": { "total_users": 1542, "active_sessions": 312 }
-                }
-                """.data(using: .utf8)!,
-                contentType: "application/json"
-            ),
-            statusCode: 200,
-            startedAt: Date().addingTimeInterval(-1.5),
-            duration: 0.213,
-            errorDescription: nil
-        )
-        NavigationView {
-            ProwlLogDetailView(log: dummyLog)
-        }
-    }
-}
-#endif

@@ -18,6 +18,7 @@ public struct ProwlSettingsView: View {
     public var onExportCURL: () -> Void
     
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
     
     public init(
         viewModel: ProwlInspectorViewModel,
@@ -30,8 +31,7 @@ public struct ProwlSettingsView: View {
     }
 
     public var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 Section(header: Text("Statistics")) {
                     labeledStatRow(title: "Total Requests", value: "\(viewModel.logs.count)")
                     labeledStatRow(title: "Success Rate (2xx)", value: successRateString)
@@ -52,6 +52,15 @@ public struct ProwlSettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Appearance")) {
+                    Picker("Theme", selection: $themeRaw) {
+                        Text("System").tag(0)
+                        Text("Light").tag(1)
+                        Text("Dark").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                
                 Section(header: Text("Export & Share")) {
                     Button(role: .none, action: {
                         dismiss()
@@ -62,7 +71,7 @@ public struct ProwlSettingsView: View {
                             onExportText()
                         }
                     }) {
-                        Label("Share Session Logs (JSON)", systemImage: "doc.text")
+                        Label("Share / Email Logs (JSON)", systemImage: "envelope")
                     }
                     
                     Button(role: .none, action: {
@@ -83,11 +92,7 @@ public struct ProwlSettingsView: View {
                     labeledStatRow(title: "Screen Size", value: screenResolution)
                 }
             }
-            .navigationTitle("Settings")
-#if os(iOS) || os(visionOS)
-            .navigationBarItems(trailing: Button("Done") { dismiss() })
-#endif
-        }
+        .navigationTitle("Settings")
     }
 
     // MARK: - Stats Helpers

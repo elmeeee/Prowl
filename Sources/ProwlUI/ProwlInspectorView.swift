@@ -13,7 +13,8 @@ public struct ProwlInspectorView: View {
     @StateObject private var viewModel: ProwlInspectorViewModel
     @State private var selectedLogID: NetworkLog.ID?
     @State private var iOSExportPayload: ProwlExportPayload?
-    @State private var isSettingsPresented = false
+    
+    @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
 
     public init(storage: ProwlStorage? = nil) {
         _viewModel = StateObject(wrappedValue: ProwlInspectorViewModel(storage: storage))
@@ -31,15 +32,17 @@ public struct ProwlInspectorView: View {
             detailPane
             #endif
         }
+        .preferredColorScheme(colorScheme)
         .sheet(item: $iOSExportPayload) { payload in
             ProwlActivityView(activityItems: [payload.content])
         }
-        .sheet(isPresented: $isSettingsPresented) {
-            ProwlSettingsView(
-                viewModel: viewModel,
-                onExportText: { exportLogs(as: .formattedText) },
-                onExportCURL: { exportLogs(as: .curlCommands) }
-            )
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch themeRaw {
+        case 1: return .light
+        case 2: return .dark
+        default: return nil
         }
     }
 
@@ -106,17 +109,21 @@ public struct ProwlInspectorView: View {
             }
             .tint(.red)
             
-            Button {
-                isSettingsPresented = true
-            } label: {
+            NavigationLink(destination: ProwlSettingsView(
+                viewModel: viewModel,
+                onExportText: { exportLogs(as: .formattedText) },
+                onExportCURL: { exportLogs(as: .curlCommands) }
+            )) {
                 Image(systemName: "gearshape")
             }
         }
 #else
         ToolbarItem(placement: .primaryAction) {
-            Button {
-                isSettingsPresented = true
-            } label: {
+            NavigationLink(destination: ProwlSettingsView(
+                viewModel: viewModel,
+                onExportText: { exportLogs(as: .formattedText) },
+                onExportCURL: { exportLogs(as: .curlCommands) }
+            )) {
                 Image(systemName: "gearshape")
             }
         }
@@ -189,7 +196,7 @@ struct ProwlInspectorView_Previews: PreviewProvider {
                         .task {
                             let dummyStorage = ProwlStorage(limit: 100)
                             let logs = [
-                                NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/engage"), method: "POST", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 500, startedAt: Date().addingTimeInterval(-10), duration: 0.402, errorDescription: nil),
+                                NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/engage"), method: "PATCH", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 500, startedAt: Date().addingTimeInterval(-10), duration: 0.402, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api.mixpanel.com/track"), method: "POST", requestHeaders: ["Content-Type": "application/json"], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-20), duration: 0.523, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api.dev.saldoo.app/image/bb-5-id.png"), method: "GET", requestHeaders: [:], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-30), duration: 0.001, errorDescription: nil),
                                 NetworkLog(requestID: UUID(), url: URL(string: "https://api-panel.dev.saldoo.app/image/com.d6ab7cf.png"), method: "GET", requestHeaders: [:], requestBody: nil, responseHeaders: [:], responseBody: nil, statusCode: 200, startedAt: Date().addingTimeInterval(-40), duration: 0.001, errorDescription: nil)

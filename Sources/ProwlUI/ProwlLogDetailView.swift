@@ -297,6 +297,7 @@ public struct ProwlLogDetailView: View {
         }
     }
 
+    @ViewBuilder
     private func bodySection(title: String, body: NetworkLog.Body?) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -317,14 +318,32 @@ public struct ProwlLogDetailView: View {
             }
 
             if let body, !body.data.isEmpty {
-                let rendered = bodyText(from: body, pretty: isBodyPretty)
-                Text(ProwlJSONSyntaxHighlighter.highlight(rendered, contentType: body.contentType))
-                    .font(.caption.monospaced())
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(platformSecondaryBackground, in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
+                let isImage = body.contentType?.lowercased().contains("image") ?? false
+                #if os(iOS) || os(visionOS)
+                if isImage, let uiImage = UIImage(data: body.data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 300)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                } else {
+                    renderTextBody(body: body)
+                }
+                #elseif os(macOS)
+                if isImage, let nsImage = NSImage(data: body.data) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 300)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                } else {
+                    renderTextBody(body: body)
+                }
+                #else
+                renderTextBody(body: body)
+                #endif
             } else {
                 Text("No body")
                     .font(.caption)
@@ -332,6 +351,17 @@ public struct ProwlLogDetailView: View {
                     .padding(.horizontal)
             }
         }
+    }
+
+    private func renderTextBody(body: NetworkLog.Body) -> some View {
+        let rendered = bodyText(from: body, pretty: isBodyPretty)
+        return Text(ProwlJSONSyntaxHighlighter.highlight(rendered, contentType: body.contentType))
+            .font(.caption.monospaced())
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(platformSecondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal)
     }
 
     // MARK: - Helpers

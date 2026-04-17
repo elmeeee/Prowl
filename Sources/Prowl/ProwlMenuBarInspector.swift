@@ -14,7 +14,8 @@ import SwiftUI
 @MainActor
 enum ProwlMenuBarInspector {
     private static var statusItem: NSStatusItem?
-    private static var menuActionHandler: MenuActionHandler?
+    private static var actionHandler: ActionHandler?
+    private static var popover: NSPopover?
     private static var inspectorWindowController: NSWindowController?
 
     static func enable() {
@@ -23,12 +24,14 @@ enum ProwlMenuBarInspector {
     }
 
     static func disable() {
+        closePopover()
         hide()
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
             self.statusItem = nil
         }
-        menuActionHandler = nil
+        actionHandler = nil
+        popover = nil
     }
 
     static func show() {
@@ -53,46 +56,65 @@ enum ProwlMenuBarInspector {
 
     private static func installStatusItem() {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        let actionHandler = ActionHandler()
         if let button = statusItem.button {
             button.title = "Prowl"
             button.image = menuBarIconImage()
             button.imagePosition = .imageLeading
-            button.toolTip = "Open Prowl Inspector"
+            button.toolTip = "Open Prowl Inspector Panel"
+            button.target = actionHandler
+            button.action = #selector(ActionHandler.statusItemClicked(_:))
+        }
+        self.statusItem = statusItem
+        self.actionHandler = actionHandler
+    }
+
+    private static func togglePopover(from button: NSStatusBarButton) {
+        let popover = ensurePopover()
+        if popover.isShown {
+            closePopover()
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private static func closePopover() {
+        popover?.performClose(nil)
+    }
+
+    private static func ensurePopover() -> NSPopover {
+        if let popover {
+            return popover
         }
 
-        let menu = NSMenu()
-        let actionHandler = MenuActionHandler()
-
-        let openItem = NSMenuItem(
-            title: "Open Prowl Inspector",
-            action: #selector(MenuActionHandler.openInspector),
-            keyEquivalent: ""
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = NSSize(width: 340, height: 220)
+        popover.contentViewController = NSHostingController(
+            rootView: ProwlStatusPopoverView(
+                icon: menuBarIconImage(),
+                onOpenInspector: {
+                    closePopover()
+                    show()
+                },
+                onToggleInspector: {
+                    closePopover()
+                    toggle()
+                },
+                onHideInspector: {
+                    closePopover()
+                    hide()
+                },
+                onClose: {
+                    closePopover()
+                }
+            )
         )
-        openItem.target = actionHandler
-        menu.addItem(openItem)
 
-        let hideItem = NSMenuItem(
-            title: "Hide Prowl Inspector",
-            action: #selector(MenuActionHandler.hideInspector),
-            keyEquivalent: ""
-        )
-        hideItem.target = actionHandler
-        menu.addItem(hideItem)
-
-        menu.addItem(.separator())
-
-        let toggleItem = NSMenuItem(
-            title: "Toggle Inspector",
-            action: #selector(MenuActionHandler.toggleInspector),
-            keyEquivalent: "p"
-        )
-        toggleItem.keyEquivalentModifierMask = [.command, .shift]
-        toggleItem.target = actionHandler
-        menu.addItem(toggleItem)
-
-        statusItem.menu = menu
-        self.statusItem = statusItem
-        menuActionHandler = actionHandler
+        self.popover = popover
+        return popover
     }
 
     private static func menuBarIconImage() -> NSImage? {
@@ -131,18 +153,65 @@ enum ProwlMenuBarInspector {
     }
 
     @MainActor
-    private final class MenuActionHandler: NSObject {
-        @objc func openInspector() {
-            ProwlMenuBarInspector.show()
+    private final class ActionHandler: NSObject {
+        @objc func statusItemClicked(_ sender: Any?) {
+            guard let button = ProwlMenuBarInspector.statusItem?.button else { return }
+            ProwlMenuBarInspector.togglePopover(from: button)
         }
+    }
+}
 
-        @objc func hideInspector() {
-            ProwlMenuBarInspector.hide()
-        }
+private struct ProwlStatusPopoverView: View {
+    let icon: NSImage?
+    let onOpenInspector: () -> Void
+    let onToggleInspector: () -> Void
+    let onHideInspector: () -> Void
+    let onClose: () -> Void
 
-        @objc func toggleInspector() {
-            ProwlMenuBarInspector.toggle()
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                if let icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 22, height: 22)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                Text("Prowl Inspector")
+                    .font(.headline)
+                Spacer()
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+
+            Text("Network debugger is running. Open inspector from this panel.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Button("Open Inspector", action: onOpenInspector)
+                    .buttonStyle(.borderedProminent)
+                Button("Toggle", action: onToggleInspector)
+                    .buttonStyle(.bordered)
+                Button("Hide", action: onHideInspector)
+                    .buttonStyle(.bordered)
+            }
+
+            Divider()
+
+            Text("Shortcut: Command + Shift + P")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(NSColor.windowBackgroundColor))
     }
 }
 #endif

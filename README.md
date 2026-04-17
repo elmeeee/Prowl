@@ -1,7 +1,7 @@
 # Prowl
 
 <p align="center">
-  <img src="Sources/prowl_icon.png" alt="Prowl Icon" width="220" />
+  <img src="Sources/Resource/prowl_icon.png" alt="Prowl Icon" width="220" />
 </p>
 
 Prowl is a lightweight, high-performance network debugging library for the Apple ecosystem (`iOS`, `macOS`, `watchOS`, `tvOS`, `visionOS`) built with native `Foundation` + `SwiftUI` and distributed via Swift Package Manager.
@@ -17,7 +17,7 @@ Prowl is a lightweight, high-performance network debugging library for the Apple
 - Export logs as formatted text or cURL commands
 - Activation shortcuts:
   - iOS shake gesture
-  - macOS `Command + Shift + P`
+  - macOS menu bar popover + `Command + Shift + P`
 
 ## Install (SPM)
 
@@ -26,21 +26,21 @@ In Xcode:
 1. `File` -> `Add Package Dependencies...`
 2. Enter your repository URL for Prowl
 3. Select dependency rule version:
-   - `Up to Next Major Version` (recommended), example from `0.5.2`
+   - `Up to Next Major Version` (recommended), example from `0.5.13`
    - `Up to Next Minor Version`
    - `Exact Version` (locked)
 4. Add the `Prowl` product to your app target
 
 ### Version Strategy Example
 
-- **Stable updates (recommended):** `Up to Next Major` from `0.5.2`
-- **Strict lock for CI/release:** `Exact` `0.5.2`
+- **Stable updates (recommended):** `Up to Next Major` from `0.5.13`
+- **Strict lock for CI/release:** `Exact` `0.5.13`
 
 If you use `Package.swift` directly, pin like this:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.5.2")
+    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.5.13")
 ]
 ```
 
@@ -104,15 +104,17 @@ No extra view modifier is required.
 After `Prowl.start()`:
 
 - iOS: shake device to toggle inspector
-- macOS: present `ProwlInspectorView()` manually (see Manual Inspector View)
+- macOS: click the `Prowl` status bar icon and choose inspector actions from the popover panel
 
-You can also control inspector manually (iOS):
+You can also control inspector manually (iOS/macOS):
 
 ```swift
 Prowl.show()
 Prowl.hide()
 Prowl.toggle()
 ```
+
+On macOS, `Prowl.start()` automatically installs a menu bar item so you can open/toggle the inspector without embedding a custom debug screen.
 
 ## Configure Storage and Masking
 
@@ -127,6 +129,19 @@ let masker = SensitiveDataMasker(
 )
 
 Prowl.configure(storage: storage, masker: masker)
+Prowl.start()
+```
+
+## Custom URLSessionDelegate (Pinning / mTLS)
+
+You can provide your own `URLSessionDelegate` (for certificate pinning, mTLS, or custom trust handling):
+
+```swift
+final class MySessionDelegate: NSObject, URLSessionDelegate {
+    // Implement trust / challenge handling here
+}
+
+Prowl.customSessionDelegate = MySessionDelegate()
 Prowl.start()
 ```
 
@@ -156,6 +171,19 @@ struct DebugPanelHost: View {
     }
 }
 ```
+
+## Example App
+
+A complete usage example lives in:
+
+```text
+Example/Prowl-example
+```
+
+It includes:
+- iOS tabs with live API traffic
+- macOS menu bar inspector integration
+- mock/edit flows and export actions
 
 ## Stop Interception
 

@@ -87,6 +87,13 @@ public struct ProwlInspectorView: View {
                 emptyStateView(title: "No Logs", subtitle: "No requests match your filters.")
             }
         }
+        #if os(macOS)
+        // Prevent first list row from appearing under toolbar/search field
+        // when the window initially renders.
+        .safeAreaInset(edge: .top) {
+            Color.clear.frame(height: 10)
+        }
+        #endif
     }
 
     #if os(macOS) || os(visionOS)

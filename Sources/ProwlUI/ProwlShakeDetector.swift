@@ -16,27 +16,30 @@ public enum ProwlShakeMonitor {
 
     private static let debounceInterval: TimeInterval = 1.5
     @MainActor
+    private static var isInstalled = false
+    @MainActor
     private static var lastPostedAt: Date?
 
     public static func installIfNeeded() {
-        _ = installToken
-    }
+        Task { @MainActor in
+            guard !isInstalled else { return }
+            isInstalled = true
 
-    private static let installToken: Void = {
-        let applicationClass: AnyClass = object_getClass(UIApplication.shared) ?? UIApplication.self
-        swizzleMethod(
-            on: applicationClass,
-            original: #selector(UIApplication.sendEvent(_:)),
-            swizzledFrom: UIApplication.self,
-            swizzled: #selector(UIApplication.prowl_sendEvent(_:))
-        )
-        swizzleMethod(
-            on: UIWindow.self,
-            original: #selector(UIWindow.motionEnded(_:with:)),
-            swizzledFrom: UIWindow.self,
-            swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
-        )
-    }()
+            let applicationClass: AnyClass = object_getClass(UIApplication.shared) ?? UIApplication.self
+            swizzleMethod(
+                on: applicationClass,
+                original: #selector(UIApplication.sendEvent(_:)),
+                swizzledFrom: UIApplication.self,
+                swizzled: #selector(UIApplication.prowl_sendEvent(_:))
+            )
+            swizzleMethod(
+                on: UIWindow.self,
+                original: #selector(UIWindow.motionEnded(_:with:)),
+                swizzledFrom: UIWindow.self,
+                swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
+            )
+        }
+    }
 
     private static func swizzleMethod(
         on targetClass: AnyClass,

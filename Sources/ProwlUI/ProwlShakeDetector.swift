@@ -11,33 +11,46 @@ import SwiftUI
 import UIKit
 import ObjectiveC.runtime
 
+@MainActor
 public enum ProwlShakeMonitor {
     public static let didShakeNotification = Notification.Name("com.prowl.didShake")
 
     private static let debounceInterval: TimeInterval = 1.5
-    @MainActor
     private static var isInstalled = false
-    @MainActor
     private static var lastPostedAt: Date?
 
     public static func installIfNeeded() {
-        Task { @MainActor in
-            guard !isInstalled else { return }
-            isInstalled = true
+        guard !isInstalled else { return }
+        isInstalled = true
 
-            let applicationClass: AnyClass = object_getClass(UIApplication.shared) ?? UIApplication.self
-            swizzleMethod(
-                on: applicationClass,
-                original: #selector(UIApplication.sendEvent(_:)),
-                swizzledFrom: UIApplication.self,
-                swizzled: #selector(UIApplication.prowl_sendEvent(_:))
-            )
-            swizzleMethod(
-                on: UIWindow.self,
-                original: #selector(UIWindow.motionEnded(_:with:)),
-                swizzledFrom: UIWindow.self,
-                swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
-            )
+        let applicationClass: AnyClass = object_getClass(UIApplication.shared) ?? UIApplication.self
+        swizzleMethod(
+            on: applicationClass,
+            original: #selector(UIApplication.sendEvent(_:)),
+            swizzledFrom: UIApplication.self,
+            swizzled: #selector(UIApplication.prowl_sendEvent(_:))
+        )
+        swizzleMethod(
+            on: UIWindow.self,
+            original: #selector(UIWindow.motionEnded(_:with:)),
+            swizzledFrom: UIWindow.self,
+            swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
+        )
+
+        UIApplication.shared.applicationSupportsShakeToEdit = true
+    }
+
+    /// Called from swizzled @objc methods on the main thread via the ObjC runtime.
+    /// We hop into a MainActor Task explicitly so callers from ObjC dispatch are safe
+    /// under Swift 6 strict concurrency.
+    nonisolated static func postShakeDetected() {
+        Task { @MainActor in
+            let now = Date()
+            if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
+                return
+            }
+            lastPostedAt = now
+            NotificationCenter.default.post(name: didShakeNotification, object: nil)
         }
     }
 
@@ -70,17 +83,6 @@ public enum ProwlShakeMonitor {
             )
         } else {
             method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
-    }
-
-    static func postShakeDetected() {
-        Task { @MainActor in
-            let now = Date()
-            if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
-                return
-            }
-            lastPostedAt = now
-            NotificationCenter.default.post(name: didShakeNotification, object: nil)
         }
     }
 }

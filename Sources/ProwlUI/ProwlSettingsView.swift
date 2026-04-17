@@ -145,11 +145,24 @@ public struct ProwlSettingsView: View {
 
                 macSection("Export & Share") {
                     HStack(spacing: 10) {
-                        ShareLink(item: formattedTextExportContent) {
-                            Label("Share / Email Logs (JSON)", systemImage: "envelope")
-                        }
-                        ShareLink(item: curlExportContent) {
-                            Label("Share cURL Commands", systemImage: "terminal")
+                        if #available(macOS 13.0, *) {
+                            ShareLink(item: formattedTextExportContent) {
+                                Label("Share / Email Logs (JSON)", systemImage: "envelope")
+                            }
+                            ShareLink(item: curlExportContent) {
+                                Label("Share cURL Commands", systemImage: "terminal")
+                            }
+                        } else {
+                            Button {
+                                onExportText()
+                            } label: {
+                                Label("Export Logs (JSON)", systemImage: "envelope")
+                            }
+                            Button {
+                                onExportCURL()
+                            } label: {
+                                Label("Export cURL Commands", systemImage: "terminal")
+                            }
                         }
                     }
                     .buttonStyle(.borderedProminent)

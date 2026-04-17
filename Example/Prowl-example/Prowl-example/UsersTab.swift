@@ -33,7 +33,7 @@ struct UsersTab: View {
     @StateObject private var vm = UsersViewModel()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if vm.isLoading {
                     ProgressView("Fetching users…").frame(maxWidth: .infinity, maxHeight: .infinity)

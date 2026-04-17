@@ -227,6 +227,9 @@ public struct ProwlSettingsView: View {
 
     private var exportJSONButton: some View {
         Button(role: .none, action: {
+            #if os(macOS)
+            onExportText()
+            #else
             dismiss()
 
             // Adding slight delay allowing modal dismissal animation to complete
@@ -234,6 +237,7 @@ public struct ProwlSettingsView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 onExportText()
             }
+            #endif
         }) {
             Label("Share / Email Logs (JSON)", systemImage: "envelope")
         }
@@ -241,10 +245,14 @@ public struct ProwlSettingsView: View {
 
     private var exportCURLButton: some View {
         Button(role: .none, action: {
+            #if os(macOS)
+            onExportCURL()
+            #else
             dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 onExportCURL()
             }
+            #endif
         }) {
             Label("Share cURL Commands", systemImage: "terminal")
         }

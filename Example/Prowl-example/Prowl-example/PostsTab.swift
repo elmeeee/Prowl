@@ -82,7 +82,7 @@ struct PostsTab: View {
     @StateObject private var vm = PostsViewModel()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 switch vm.state {
                 case .idle:

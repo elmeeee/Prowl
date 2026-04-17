@@ -50,7 +50,7 @@ struct DogTab: View {
     @StateObject private var vm = DogViewModel()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
 

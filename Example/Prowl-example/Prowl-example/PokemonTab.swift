@@ -36,7 +36,7 @@ struct PokemonTab: View {
     private let limits = [10, 20, 50, 100]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if vm.isLoading {
                     ProgressView("Catching Pokémon…").frame(

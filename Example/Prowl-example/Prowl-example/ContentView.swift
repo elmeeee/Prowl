@@ -31,12 +31,14 @@ struct ContentView: View {
                     Label("Dog", systemImage: "pawprint.fill")
                 }
         }
+        #if os(iOS)
         .overlay(alignment: .bottom) {
             Text("Shake to open Prowl Inspector")
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 80)
         }
+        #endif
     }
 }
 

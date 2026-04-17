@@ -25,12 +25,25 @@ private class ProwlInspectorHostingController: UIHostingController<ProwlInspecto
 @MainActor
 enum ProwlAutoInspector {
     private static var observer: NSObjectProtocol?
+    private static var appActiveObserver: NSObjectProtocol?
     private static var lastPresentationDate: Date?
+    private static var retryPresentationWorkItem: DispatchWorkItem?
+    private static var retryAttempt = 0
+    private static let maxRetryAttempts = 6
 
     static func enable() {
         guard observer == nil else { return }
         UIApplication.shared.applicationSupportsShakeToEdit = true
         ProwlShakeMonitor.installIfNeeded()
+        appActiveObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                resetPendingPresentationRetry()
+            }
+        }
         observer = NotificationCenter.default.addObserver(
             forName: ProwlShakeMonitor.didShakeNotification,
             object: nil,
@@ -47,6 +60,11 @@ enum ProwlAutoInspector {
             NotificationCenter.default.removeObserver(observer)
             self.observer = nil
         }
+        if let appActiveObserver {
+            NotificationCenter.default.removeObserver(appActiveObserver)
+            self.appActiveObserver = nil
+        }
+        resetPendingPresentationRetry()
     }
 
     static func show() {
@@ -54,6 +72,7 @@ enum ProwlAutoInspector {
     }
 
     static func hide() {
+        resetPendingPresentationRetry()
         guard let inspector = presentedInspectorController() else { return }
         inspector.dismiss(animated: true)
     }
@@ -67,20 +86,50 @@ enum ProwlAutoInspector {
     }
 
     private static func presentIfNeeded() {
-        guard let window = keyWindow() else { return }
-        guard let root = window.rootViewController else { return }
+        guard let window = keyWindow() else {
+            schedulePresentationRetry()
+            return
+        }
+        guard let root = window.rootViewController else {
+            schedulePresentationRetry()
+            return
+        }
         guard presentedInspectorController() == nil else { return }
-        guard let topController = topMostViewController(from: root) else { return }
+        guard let topController = topMostViewController(from: root) else {
+            schedulePresentationRetry()
+            return
+        }
 
         guard !topController.isBeingPresented,
               !topController.isBeingDismissed,
               topController.presentedViewController == nil else {
+            schedulePresentationRetry()
             return
         }
 
         let inspectorView = ProwlInspectorView()
         let hostController = ProwlInspectorHostingController(rootView: inspectorView)
         topController.present(hostController, animated: true)
+        resetPendingPresentationRetry()
+    }
+
+    private static func schedulePresentationRetry() {
+        guard retryAttempt < maxRetryAttempts else { return }
+        retryPresentationWorkItem?.cancel()
+        retryAttempt += 1
+
+        let workItem = DispatchWorkItem { @MainActor in
+            retryPresentationWorkItem = nil
+            presentIfNeeded()
+        }
+        retryPresentationWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
+    }
+
+    private static func resetPendingPresentationRetry() {
+        retryPresentationWorkItem?.cancel()
+        retryPresentationWorkItem = nil
+        retryAttempt = 0
     }
 
     private static func topMostViewController(

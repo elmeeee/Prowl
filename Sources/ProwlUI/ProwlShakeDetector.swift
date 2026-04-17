@@ -39,7 +39,7 @@ public enum ProwlShakeMonitor {
     }()
 
     static func postShakeDetected() {
-        MainActor.assumeIsolated {
+        Task { @MainActor in
             let now = Date()
             if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {
                 return

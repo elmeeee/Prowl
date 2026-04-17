@@ -12,9 +12,10 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.5.15"
+    public static let version = "0.5.16"
 
     private static var isRunning = false
+    private static let startupMessage = "Prowl Inspector started | Crafted by Elmee"
 
     public static func storage() async -> ProwlStorage {
         await ProwlRuntime.shared.currentStorage()
@@ -38,7 +39,10 @@ public enum Prowl {
 
     /// Registers `ProwlProtocol` once for process-wide interception.
     public static func start(ignoredURLs: [String] = []) {
-        guard !isRunning else { return }
+        guard !isRunning else {
+            log("[\(version)] \(startupMessage) (already running)")
+            return
+        }
 
         ignoredURLs.forEach { ignoreURL($0) }
 
@@ -50,7 +54,7 @@ public enum Prowl {
         #endif
         isRunning = true
 
-        print("[\(version)] Prowl Inspector started | Crafted by Elmee")
+        log("[\(version)] \(startupMessage)")
     }
 
     /// Unregisters `ProwlProtocol` to fully disable interception.
@@ -107,5 +111,11 @@ public enum Prowl {
         Task {
             await ProwlRuntime.shared.configure(storage: storage, masker: masker)
         }
+    }
+
+    private static func log(_ message: String) {
+        // NSLog is more reliable than stdout print during early app launch.
+        NSLog("%@", message)
+        print(message)
     }
 }

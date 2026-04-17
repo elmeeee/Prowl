@@ -23,20 +23,52 @@ public enum ProwlShakeMonitor {
     }
 
     private static let installToken: Void = {
-        if
-            let originalAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.sendEvent(_:))),
-            let swizzledAppMethod = class_getInstanceMethod(UIApplication.self, #selector(UIApplication.prowl_sendEvent(_:)))
-        {
-            method_exchangeImplementations(originalAppMethod, swizzledAppMethod)
+        let applicationClass: AnyClass = object_getClass(UIApplication.shared) ?? UIApplication.self
+        swizzleMethod(
+            on: applicationClass,
+            original: #selector(UIApplication.sendEvent(_:)),
+            swizzledFrom: UIApplication.self,
+            swizzled: #selector(UIApplication.prowl_sendEvent(_:))
+        )
+        swizzleMethod(
+            on: UIWindow.self,
+            original: #selector(UIWindow.motionEnded(_:with:)),
+            swizzledFrom: UIWindow.self,
+            swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
+        )
+    }()
+
+    private static func swizzleMethod(
+        on targetClass: AnyClass,
+        original originalSelector: Selector,
+        swizzledFrom sourceClass: AnyClass,
+        swizzled swizzledSelector: Selector
+    ) {
+        guard
+            let originalMethod = class_getInstanceMethod(targetClass, originalSelector),
+            let swizzledMethod = class_getInstanceMethod(sourceClass, swizzledSelector)
+        else {
+            return
         }
 
-        if
-            let originalWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.motionEnded(_:with:))),
-            let swizzledWindowMethod = class_getInstanceMethod(UIWindow.self, #selector(UIWindow.prowl_motionEnded(_:with:)))
-        {
-            method_exchangeImplementations(originalWindowMethod, swizzledWindowMethod)
+        let didAddSwizzledImplementation = class_addMethod(
+            targetClass,
+            originalSelector,
+            method_getImplementation(swizzledMethod),
+            method_getTypeEncoding(swizzledMethod)
+        )
+
+        if didAddSwizzledImplementation {
+            class_replaceMethod(
+                targetClass,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod)
+            )
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
         }
-    }()
+    }
 
     static func postShakeDetected() {
         Task { @MainActor in

@@ -40,7 +40,7 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 resetPendingPresentationRetry()
             }
         }
@@ -49,7 +49,7 @@ enum ProwlAutoInspector {
             object: nil,
             queue: .main
         ) { _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 toggle()
             }
         }

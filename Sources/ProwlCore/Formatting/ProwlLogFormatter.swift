@@ -82,11 +82,11 @@ public enum ProwlLogFormatter {
         chunks.append("** INFO **")
         chunks.append("[URL] \n\(log.url?.absoluteString ?? "-")")
         chunks.append("[Method] \n\(log.method)")
-        chunks.append("[Status] \n\(log.statusCode.map(String.init) ?? "N/A")")
+        chunks.append("[Status] \n\(log.statusCode.map { String($0) } ?? "N/A")")
         chunks.append("[Request date] \n\(dateFormatter.string(from: log.startedAt))")
         chunks.append("[Response date] \n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))")
         chunks.append("[Time interval] \n\(String(format: "%.6f", log.duration))")
-        chunks.append("[Timeout] \n\(log.timeoutInterval.map(String.init) ?? "-")")
+        chunks.append("[Timeout] \n\(log.timeoutInterval.map { String($0) } ?? "-")")
         chunks.append("[Cache policy] \n\(log.cachePolicy ?? "-")")
 
         chunks.append("** REQUEST **")
@@ -104,7 +104,7 @@ public enum ProwlLogFormatter {
         }
         chunks.append("-- Body --")
         chunks.append(responseBodyText)
-        chunks.append("logged via netfox - [https://github.com/elmeeee/netfox]")
+        chunks.append("logged via prowl - [https://github.com/elmeeee/prowl]")
 
         if let responseBody = log.responseBody, !responseBody.data.isEmpty {
             let rawResponse = String(data: responseBody.data, encoding: .utf8) ?? responseBody.data.base64EncodedString()
@@ -147,11 +147,11 @@ public enum ProwlLogFormatter {
             c.append("** INFO **")
             c.append("[URL]\n\(log.url?.absoluteString ?? "-")\n")
             c.append("[Method]\n\(log.method)\n")
-            c.append("[Status]\n\(log.statusCode.map(String.init) ?? "N/A")\n")
+            c.append("[Status]\n\(log.statusCode.map { String($0) } ?? "N/A")\n")
             c.append("[Request date]\n\(dateFormatter.string(from: log.startedAt))\n")
             c.append("[Response date]\n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))\n")
             c.append("[Time interval]\n\(String(format: "%.6f", log.duration))\n")
-            c.append("[Timeout]\n\(log.timeoutInterval.map(String.init) ?? "-")\n")
+            c.append("[Timeout]\n\(log.timeoutInterval.map { String($0) } ?? "-")\n")
             c.append("[Cache policy]\n\(log.cachePolicy ?? "-")\n")
             if let error = log.errorDescription { c.append("[Error]\n\(error)\n") }
 

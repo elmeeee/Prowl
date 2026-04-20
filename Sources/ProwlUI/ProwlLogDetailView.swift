@@ -36,6 +36,8 @@ public struct ProwlLogDetailView: View {
     @State private var selectedTab: Tab = .overview
     @State private var sharePayload: ProwlExportPayload?
     @State private var isMockEditorPresented = false
+    @State private var copyToastMessage: String?
+    @State private var copyToastToken = UUID()
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public init(log: NetworkLog) {
@@ -71,6 +73,9 @@ public struct ProwlLogDetailView: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("\(tab.rawValue) tab")
+                        .accessibilityHint("Shows \(tab.rawValue.lowercased()) details")
+                        .accessibilityAddTraits(selectedTab == tab ? [.isButton, .isSelected] : .isButton)
                     }
                 }
                 .padding(.horizontal, segmentedPickerHorizontalPadding)
@@ -129,7 +134,7 @@ public struct ProwlLogDetailView: View {
             #endif
         }
         .onChange(of: viewModel.pasteboardString) { str in
-            if let str { copyToPasteboard(str) }
+            if let str { copyToPasteboard(str, toastMessage: "Body copied") }
         }
         #if os(iOS) || os(visionOS)
         .sheet(item: $sharePayload) { payload in
@@ -138,6 +143,13 @@ public struct ProwlLogDetailView: View {
         #endif
         .sheet(isPresented: $isMockEditorPresented) {
             ProwlMockEditorView(log: log)
+        }
+        .overlay(alignment: .bottom) {
+            if let copyToastMessage {
+                copyToastView(message: copyToastMessage)
+                    .padding(.bottom, 22)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
     }
 
@@ -246,8 +258,8 @@ public struct ProwlLogDetailView: View {
         [
             ("URL", log.url?.absoluteString ?? "-"),
             ("Method", log.method),
-            ("Status", log.statusCode.map(String.init) ?? "N/A"),
-            ("Timeout", log.timeoutInterval.map(String.init) ?? "-"),
+            ("Status", log.statusCode.map { String($0) } ?? "N/A"),
+            ("Timeout", log.timeoutInterval.map { String($0) } ?? "-"),
             ("Cache Policy", log.cachePolicy ?? "-"),
             ("Request Date", Self.timestampFormatter.string(from: log.startedAt)),
             ("Response Date", Self.timestampFormatter.string(from: log.startedAt.addingTimeInterval(log.duration))),
@@ -263,11 +275,13 @@ public struct ProwlLogDetailView: View {
                 Spacer()
                 Button("Copy") {
                     let text = items.map { "\($0.0): \($0.1)" }.joined(separator: "\n")
-                    copyToPasteboard(text)
+                    copyToPasteboard(text, toastMessage: "Metadata copied")
                 }
                 .font(.caption.bold())
                 .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(Color.blue.opacity(0.1), in: Capsule())
+                .accessibilityLabel("Copy request metadata")
+                .accessibilityHint("Copies request metadata to clipboard")
             }
 
             VStack(spacing: 0) {
@@ -299,11 +313,13 @@ public struct ProwlLogDetailView: View {
                 if !headers.isEmpty {
                     Button("Copy") {
                         let text = headers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
-                        copyToPasteboard(text)
+                        copyToPasteboard(text, toastMessage: "\(title) copied")
                     }
                     .font(.caption.bold())
                     .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(Color.blue.opacity(0.1), in: Capsule())
+                    .accessibilityLabel("Copy \(title)")
+                    .accessibilityHint("Copies \(title.lowercased()) to clipboard")
                 }
             }
 
@@ -363,6 +379,8 @@ public struct ProwlLogDetailView: View {
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(Color.blue.opacity(0.1), in: Capsule())
                         .padding(.trailing)
+                        .accessibilityLabel("Copy \(title)")
+                        .accessibilityHint("Copies \(title.lowercased()) to clipboard")
                 }
             }
 
@@ -418,6 +436,7 @@ public struct ProwlLogDetailView: View {
             .foregroundColor(methodColor(method))
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(methodColor(method).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityLabel("Method \(method.uppercased())")
     }
 
     @ViewBuilder
@@ -432,6 +451,7 @@ public struct ProwlLogDetailView: View {
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(statusColor(statusCode).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityLabel("Status \(statusCode.map { String($0) } ?? "error")")
     }
 
     private func methodColor(_ method: String) -> Color {
@@ -514,7 +534,24 @@ public struct ProwlLogDetailView: View {
         .lineLimit(1)
     }
 
-    private func copyToPasteboard(_ string: String) {
+    @ViewBuilder
+    private func copyToastView(message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
+    }
+
+    private func copyToPasteboard(_ string: String, toastMessage: String = "Copied") {
         #if os(iOS) || os(visionOS)
             UIPasteboard.general.string = string
         #elseif os(macOS)
@@ -522,5 +559,29 @@ public struct ProwlLogDetailView: View {
             p.clearContents()
             p.setString(string, forType: .string)
         #endif
+        triggerCopyFeedback()
+        showCopyToast(toastMessage)
+    }
+
+    private func triggerCopyFeedback() {
+        #if os(iOS) || os(visionOS)
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        #endif
+    }
+
+    private func showCopyToast(_ message: String) {
+        let token = UUID()
+        copyToastToken = token
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+            copyToastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            guard copyToastToken == token else { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                copyToastMessage = nil
+            }
+        }
     }
 }

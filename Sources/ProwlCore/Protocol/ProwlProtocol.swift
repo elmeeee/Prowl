@@ -117,33 +117,42 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         let requestID = (URLProtocol.property(forKey: Self.requestIDKey, in: request) as? String)
             .flatMap(UUID.init(uuidString:))
             ?? UUID()
+        let requestURL = request.url
+        let requestMethod = request.httpMethod ?? "GET"
+        let requestContentType = request.value(forHTTPHeaderField: "Content-Type")
+        let responseContentType = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")
+        let statusCode = (response as? HTTPURLResponse)?.statusCode
+        let timeoutInterval = request.timeoutInterval
+        let cachePolicy = Self.cachePolicyName(request.cachePolicy)
+        let errorDescription = error?.localizedDescription
+        let requestBodyPayload = requestBodyData ?? request.httpBody
 
         Task {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
             let requestBody = snapshot.masker.mask(
-                body: requestBodyData ?? request.httpBody,
-                contentType: request.value(forHTTPHeaderField: "Content-Type")
+                body: requestBodyPayload,
+                contentType: requestContentType
             )
             let responseBody = snapshot.masker.mask(
                 body: data,
-                contentType: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")
+                contentType: responseContentType
             )
 
             let log = NetworkLog(
                 requestID: requestID,
-                url: request.url,
-                method: request.httpMethod ?? "GET",
+                url: requestURL,
+                method: requestMethod,
                 requestHeaders: snapshot.masker.mask(headers: requestHeaders),
                 requestBody: requestBody,
                 responseHeaders: snapshot.masker.mask(headers: responseHeaders),
                 responseBody: responseBody,
-                statusCode: (response as? HTTPURLResponse)?.statusCode,
+                statusCode: statusCode,
                 startedAt: startedAt,
                 duration: duration,
-                timeoutInterval: request.timeoutInterval,
-                cachePolicy: Self.cachePolicyName(request.cachePolicy),
-                errorDescription: error?.localizedDescription
+                timeoutInterval: timeoutInterval,
+                cachePolicy: cachePolicy,
+                errorDescription: errorDescription
             )
             
             await snapshot.storage.append(log)

@@ -27,9 +27,12 @@ enum ProwlAutoInspector {
     private static var observer: NSObjectProtocol?
     private static var appActiveObserver: NSObjectProtocol?
     private static var lastPresentationDate: Date?
-    private static var retryPresentationWorkItem: DispatchWorkItem?
+    private static var retryPresentationTask: Task<Void, Never>?
     private static var retryAttempt = 0
     private static let maxRetryAttempts = 6
+    private static var isTransitioningInspector = false
+    private static var lastToggleAt: Date?
+    private static let minimumToggleInterval: TimeInterval = 0.35
 
     static func enable() {
         guard observer == nil else { return }
@@ -74,10 +77,22 @@ enum ProwlAutoInspector {
     static func hide() {
         resetPendingPresentationRetry()
         guard let inspector = presentedInspectorController() else { return }
-        inspector.dismiss(animated: true)
+        isTransitioningInspector = true
+        inspector.dismiss(animated: true) {
+            Task { @MainActor in
+                isTransitioningInspector = false
+            }
+        }
     }
 
     static func toggle() {
+        guard !isTransitioningInspector else { return }
+        let now = Date()
+        if let last = lastToggleAt, now.timeIntervalSince(last) < minimumToggleInterval {
+            return
+        }
+        lastToggleAt = now
+
         if presentedInspectorController() != nil {
             hide()
         } else {
@@ -86,6 +101,11 @@ enum ProwlAutoInspector {
     }
 
     private static func presentIfNeeded() {
+        guard !isTransitioningInspector else { return }
+        guard UIApplication.shared.applicationState == .active else {
+            schedulePresentationRetry()
+            return
+        }
         guard let window = keyWindow() else {
             schedulePresentationRetry()
             return
@@ -109,26 +129,35 @@ enum ProwlAutoInspector {
 
         let inspectorView = ProwlInspectorView()
         let hostController = ProwlInspectorHostingController(rootView: inspectorView)
-        topController.present(hostController, animated: true)
+        isTransitioningInspector = true
+        topController.present(hostController, animated: true) {
+            Task { @MainActor in
+                isTransitioningInspector = false
+            }
+        }
         resetPendingPresentationRetry()
     }
 
     private static func schedulePresentationRetry() {
         guard retryAttempt < maxRetryAttempts else { return }
-        retryPresentationWorkItem?.cancel()
+        retryPresentationTask?.cancel()
         retryAttempt += 1
 
-        let workItem = DispatchWorkItem { @MainActor in
-            retryPresentationWorkItem = nil
+        retryPresentationTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 250_000_000)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            retryPresentationTask = nil
             presentIfNeeded()
         }
-        retryPresentationWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
     }
 
     private static func resetPendingPresentationRetry() {
-        retryPresentationWorkItem?.cancel()
-        retryPresentationWorkItem = nil
+        retryPresentationTask?.cancel()
+        retryPresentationTask = nil
         retryAttempt = 0
     }
 

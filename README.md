@@ -1,15 +1,14 @@
 # Prowl
 
 <p align="center">
-  <img src="Sources/Resource/prowl_icon.png" alt="Prowl Icon" width="220" />
+  <img src="Sources/Prowl/Resources/prowl_icon.png" alt="Prowl Icon" width="220" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/elmeeee/Prowl/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/elmeeee/Prowl?sort=semver"></a>
+  <a href="https://github.com/elmeeee/Prowl/tags"><img alt="Latest Tag" src="https://img.shields.io/github/v/tag/elmeeee/Prowl?sort=semver&label=version"></a>
   <a href="https://github.com/elmeeee/Prowl/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/elmeeee/Prowl/ci.yml?branch=main&label=ci"></a>
   <img alt="iOS" src="https://img.shields.io/badge/iOS-15%2B-0A84FF">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.2-F05138">
-  <a href="https://github.com/elmeeee/Prowl/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/elmeeee/Prowl"></a>
 </p>
 
 Prowl is a lightweight, high-performance network debugging library for the Apple ecosystem (`iOS`, `macOS`, `watchOS`, `tvOS`, `visionOS`) built with native `Foundation` + `SwiftUI` and distributed via Swift Package Manager.

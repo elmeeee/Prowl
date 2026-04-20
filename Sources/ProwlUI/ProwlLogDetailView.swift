@@ -20,14 +20,19 @@ public struct ProwlLogDetailView: View {
         case info = "Info"
         case request = "Request"
         case response = "Response"
+
         public var id: String { rawValue }
     }
 
-    private static let exportDateFormatter: DateFormatter = {
+    private static let detailDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         return formatter
     }()
+    private static let swipeMinimumDistance: CGFloat = 14
+    private static let swipeCommitDistance: CGFloat = 28
+    private static let swipeVelocityBoostDistance: CGFloat = 44
+    private static let swipeHorizontalDominanceRatio: CGFloat = 1.25
 
     public let log: NetworkLog
 
@@ -44,9 +49,9 @@ public struct ProwlLogDetailView: View {
     public var body: some View {
         VStack(spacing: 0) {
             tabBar
-                .padding(.top, 8)
                 .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.top, 22)
+                .padding(.bottom, 14)
 
             Divider()
 
@@ -62,17 +67,22 @@ public struct ProwlLogDetailView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 24)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: Self.swipeMinimumDistance)
                     .onEnded { value in
                         let horizontal = value.translation.width
                         let vertical = value.translation.height
-                        guard abs(horizontal) > abs(vertical), abs(horizontal) > 50 else { return }
-                        moveTab(isSwipeLeft: horizontal < 0)
+                        let predictedHorizontal = value.predictedEndTranslation.width
+                        guard shouldSwitchTab(
+                            horizontalTranslation: horizontal,
+                            verticalTranslation: vertical,
+                            predictedHorizontalTranslation: predictedHorizontal
+                        ) else { return }
+                        moveTab(isSwipeLeft: effectiveHorizontalTranslation(horizontal: horizontal, predictedHorizontal: predictedHorizontal) < 0)
                     }
             )
 
@@ -80,7 +90,7 @@ public struct ProwlLogDetailView: View {
                 .padding(.bottom, 10)
         }
         .background(platformBackground)
-        .navigationTitle("Details Response")
+        .navigationTitle("Details")
         #if os(iOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -119,7 +129,7 @@ public struct ProwlLogDetailView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             ForEach(Tab.allCases) { tab in
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -127,22 +137,13 @@ public struct ProwlLogDetailView: View {
                     }
                 } label: {
                     Text(tab.rawValue)
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(selectedTab == tab ? .white : .secondary)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(selectedTab == tab ? .primary : .secondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 10)
                         .background(
-                            Group {
-                                if selectedTab == tab {
-                                    LinearGradient(
-                                        colors: [Color.purple, Color.pink],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                } else {
-                                    Color.clear
-                                }
-                            }
+                            Capsule()
+                                .fill(selectedTab == tab ? platformSelectedTabBackground : Color.clear)
                         )
                 }
                 .buttonStyle(.plain)
@@ -151,59 +152,111 @@ public struct ProwlLogDetailView: View {
                 .accessibilityAddTraits(selectedTab == tab ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .background(platformSecondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
+        .padding(6)
+        .background(
+            Capsule()
+                .fill(platformSecondaryBackground)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 
     private var infoTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            infoRow("[URL]", log.url?.absoluteString ?? "-")
-            infoRow("[Method]", log.method)
-            infoRow("[Status]", log.statusCode.map { String($0) } ?? "N/A")
-            infoRow("[Request date]", Self.exportDateFormatter.string(from: log.startedAt))
-            infoRow("[Response date]", Self.exportDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))
-            infoRow("[Time interval]", String(format: "%.8f", log.duration))
-            infoRow("[Timeout]", log.timeoutInterval.map { String($0) } ?? "-")
-            infoRow("[Cache policy]", log.cachePolicy ?? "-")
-            if let error = log.errorDescription, !error.isEmpty {
-                infoRow("[Error]", error)
+            sectionCard(title: "Endpoint") {
+                VStack(alignment: .leading, spacing: 8) {
+                    labeledValue("URL", value: log.url?.absoluteString ?? "-")
+                    Divider()
+                    HStack(spacing: 10) {
+                        capsuleTag(text: log.method.uppercased(), color: .blue)
+                        capsuleTag(text: "Status \(log.statusCode.map { String($0) } ?? "N/A")", color: statusColor(log.statusCode))
+                    }
+                }
+            }
+
+            sectionCard(title: "Timing") {
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledValue("Request Time", value: Self.detailDateFormatter.string(from: log.startedAt))
+                    labeledValue("Response Time", value: Self.detailDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))
+                    labeledValue("Duration", value: String(format: "%.8f s", log.duration))
+                    labeledValue("Timeout", value: log.timeoutInterval.map { String($0) } ?? "-")
+                    labeledValue("Cache Policy", value: log.cachePolicy ?? "-")
+                    if let error = log.errorDescription, !error.isEmpty {
+                        labeledValue("Error", value: error)
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var requestTabContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            copyButton(title: "Copy Request") {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "Request") {
                 copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
-            sectionTitle("-- Headers --")
-            headerList(log.requestHeaders)
-            sectionTitle("-- Body --")
-            bodyBlock(text: bodyText(log.requestBody, emptyText: "Request body is empty"))
+            sectionCard(title: "Headers") {
+                headerList(log.requestHeaders)
+            }
+            sectionCard(title: "Body") {
+                bodyView(log.requestBody, emptyText: "Request body is empty")
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var responseTabContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            copyButton(title: "Copy Response") {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "Response") {
                 copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
             }
-            sectionTitle("-- Headers --")
-            headerList(log.responseHeaders)
-            sectionTitle("-- Body --")
-            bodyBlock(text: bodyText(log.responseBody, emptyText: "Response body is empty"))
+            sectionCard(title: "Headers") {
+                headerList(log.responseHeaders)
+            }
+            sectionCard(title: "Body") {
+                bodyView(log.responseBody, emptyText: "Response body is empty")
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
-    private func infoRow(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private func sectionHeader(title: String, onCopy: @escaping () -> Void) -> some View {
+        HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.blue.opacity(0.9))
+                .foregroundColor(.primary)
+            Spacer()
+            Button("Copy") {
+                onCopy()
+            }
+            .font(.caption.weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.blue.opacity(0.1), in: Capsule())
+            .accessibilityLabel("Copy \(title)")
+            .accessibilityHint("Copies \(title.lowercased()) section to clipboard")
+        }
+    }
+
+    @ViewBuilder
+    private func sectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+            content()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(platformSecondaryBackground)
+        )
+    }
+
+    @ViewBuilder
+    private func labeledValue(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
             Text(value)
                 .font(.body)
                 .foregroundColor(.primary)
@@ -212,25 +265,28 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func sectionTitle(_ text: String) -> some View {
+    private func capsuleTag(text: String, color: Color) -> some View {
         Text(text)
-            .font(.title3.weight(.bold))
-            .foregroundColor(.purple.opacity(0.9))
+            .font(.caption.monospaced().weight(.bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(color.opacity(0.15), in: Capsule())
     }
 
     @ViewBuilder
     private func headerList(_ headers: [String: String]) -> some View {
         if headers.isEmpty {
             Text("No headers")
-                .font(.body)
+                .font(.subheadline)
                 .foregroundColor(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(headers.keys.sorted(), id: \.self) { key in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("[\(key)]")
-                            .font(.headline)
-                            .foregroundColor(.blue.opacity(0.9))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(key)
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.secondary)
                         Text(headers[key] ?? "")
                             .font(.body)
                             .foregroundColor(.primary)
@@ -242,12 +298,18 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func bodyBlock(text: String) -> some View {
+    private func bodyView(_ body: NetworkLog.Body?, emptyText: String) -> some View {
+        let text = bodyText(body, emptyText: emptyText)
         Text(text)
-            .font(.body.monospaced())
+            .font(.footnote.monospaced())
             .foregroundColor(.primary)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(platformBodyBackground)
+            )
     }
 
     private func bodyText(_ body: NetworkLog.Body?, emptyText: String) -> String {
@@ -257,24 +319,24 @@ public struct ProwlLogDetailView: View {
 
     private func requestDumpText() -> String {
         var lines: [String] = []
-        lines.append("-- Headers --")
+        lines.append("Headers")
         for key in log.requestHeaders.keys.sorted() {
-            lines.append("[\(key)]")
-            lines.append(log.requestHeaders[key] ?? "")
+            lines.append("\(key): \(log.requestHeaders[key] ?? "")")
         }
-        lines.append("-- Body --")
+        lines.append("")
+        lines.append("Body")
         lines.append(bodyText(log.requestBody, emptyText: "Request body is empty"))
         return lines.joined(separator: "\n")
     }
 
     private func responseDumpText() -> String {
         var lines: [String] = []
-        lines.append("-- Headers --")
+        lines.append("Headers")
         for key in log.responseHeaders.keys.sorted() {
-            lines.append("[\(key)]")
-            lines.append(log.responseHeaders[key] ?? "")
+            lines.append("\(key): \(log.responseHeaders[key] ?? "")")
         }
-        lines.append("-- Body --")
+        lines.append("")
+        lines.append("Body")
         lines.append(bodyText(log.responseBody, emptyText: "Response body is empty"))
         return lines.joined(separator: "\n")
     }
@@ -296,26 +358,33 @@ public struct ProwlLogDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private func copyButton(title: String, action: @escaping () -> Void) -> some View {
-        HStack {
-            Spacer()
-            Button(title) {
-                action()
-            }
-            .font(.caption.weight(.bold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.blue.opacity(0.1), in: Capsule())
-            .accessibilityLabel(title)
-            .accessibilityHint("Copies this section to clipboard")
+    private func shouldSwitchTab(
+        horizontalTranslation: CGFloat,
+        verticalTranslation: CGFloat,
+        predictedHorizontalTranslation: CGFloat
+    ) -> Bool {
+        let horizontalAbs = abs(horizontalTranslation)
+        let verticalAbs = abs(verticalTranslation)
+        let predictedAbs = abs(predictedHorizontalTranslation)
+
+        // Ignore mostly-vertical drags so scroll remains natural.
+        guard horizontalAbs > (verticalAbs * Self.swipeHorizontalDominanceRatio) else { return false }
+
+        // Accept either direct distance or a short-but-fast flick.
+        return horizontalAbs >= Self.swipeCommitDistance || predictedAbs >= Self.swipeVelocityBoostDistance
+    }
+
+    private func effectiveHorizontalTranslation(horizontal: CGFloat, predictedHorizontal: CGFloat) -> CGFloat {
+        if abs(predictedHorizontal) > abs(horizontal) {
+            return predictedHorizontal
         }
+        return horizontal
     }
 
     @ViewBuilder
     private var footerCreditView: some View {
         HStack(spacing: 4) {
-            Text("ini karya gua bro")
+            Text("Copyright © 2026 Elmee")
                 .foregroundColor(.secondary)
             if let siteURL = URL(string: "https://elmee.my") {
                 Link("elmee.my", destination: siteURL)
@@ -339,8 +408,6 @@ public struct ProwlLogDetailView: View {
         .padding(.vertical, 10)
         .background(.ultraThinMaterial, in: Capsule())
         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(message)
     }
 
     private func shareContent(_ content: String) {
@@ -385,6 +452,17 @@ public struct ProwlLogDetailView: View {
         }
     }
 
+    private func statusColor(_ code: Int?) -> Color {
+        guard let code else { return .red }
+        switch code {
+        case 200...299: return .green
+        case 300...399: return .blue
+        case 400...499: return .orange
+        case 500...599: return .red
+        default: return .secondary
+        }
+    }
+
     private var platformBackground: Color {
         #if os(iOS) || os(visionOS)
         return Color(UIColor.systemGroupedBackground)
@@ -402,6 +480,26 @@ public struct ProwlLogDetailView: View {
         return Color(NSColor.controlBackgroundColor)
         #else
         return .clear
+        #endif
+    }
+
+    private var platformSelectedTabBackground: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(UIColor.tertiarySystemGroupedBackground)
+        #elseif os(macOS)
+        return Color(NSColor.quaternaryLabelColor).opacity(0.12)
+        #else
+        return Color.primary.opacity(0.08)
+        #endif
+    }
+
+    private var platformBodyBackground: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(UIColor.systemBackground).opacity(0.7)
+        #elseif os(macOS)
+        return Color(NSColor.textBackgroundColor).opacity(0.7)
+        #else
+        return Color.primary.opacity(0.05)
         #endif
     }
 }

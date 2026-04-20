@@ -17,82 +17,54 @@ import AppKit
 
 public struct ProwlLogDetailView: View {
     public enum Tab: String, CaseIterable, Identifiable {
-        case overview = "Overview"
-        case headers = "Headers"
-        case body = "Body"
+        case info = "Info"
+        case request = "Request"
+        case response = "Response"
         public var id: String { rawValue }
     }
 
-    private static let timestampFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .medium
-        return f
+    private static let exportDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        return formatter
     }()
 
     public let log: NetworkLog
 
-    @StateObject private var viewModel: ProwlLogDetailViewModel
-    @State private var selectedTab: Tab = .overview
+    @State private var selectedTab: Tab = .info
     @State private var sharePayload: ProwlExportPayload?
     @State private var isMockEditorPresented = false
     @State private var copyToastMessage: String?
     @State private var copyToastToken = UUID()
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public init(log: NetworkLog) {
         self.log = log
-        _viewModel = StateObject(wrappedValue: ProwlLogDetailViewModel(log: log))
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Tab.allCases) { tab in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedTab = tab
-                            }
-                        } label: {
-                            Text(tab.rawValue)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundColor(selectedTab == tab ? .white : .primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 9)
-                                .background(
-                                    Group {
-                                        if selectedTab == tab {
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .fill(Color.accentColor)
-                                        } else {
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .fill(platformSecondaryBackground)
-                                        }
-                                    }
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(tab.rawValue) tab")
-                        .accessibilityHint("Shows \(tab.rawValue.lowercased()) details")
-                        .accessibilityAddTraits(selectedTab == tab ? [.isButton, .isSelected] : .isButton)
-                    }
-                }
-                .padding(.horizontal, segmentedPickerHorizontalPadding)
-            }
-            .padding(.top, 10)
-            .padding(.bottom, 10)
+        VStack(spacing: 0) {
+            tabBar
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
             Divider()
 
-            Group {
-                switch selectedTab {
-                case .overview: overviewView
-                case .headers: headersView
-                case .body: bodyView
+            ScrollView {
+                Group {
+                    switch selectedTab {
+                    case .info:
+                        infoTabContent
+                    case .request:
+                        requestTabContent
+                    case .response:
+                        responseTabContent
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 20)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 24)
@@ -105,36 +77,29 @@ public struct ProwlLogDetailView: View {
             )
 
             footerCreditView
-                .padding(.top, 8)
                 .padding(.bottom, 10)
-                .frame(maxWidth: .infinity)
         }
         .background(platformBackground)
-        .navigationTitle("Details")
+        .navigationTitle("Details Response")
         #if os(iOS) || os(visionOS)
-            .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Share JSON") { viewModel.handle(.shareJSON) }
-                    Button("Share cURL") { viewModel.handle(.shareCURL) }
-                    Button("Create Mock") { isMockEditorPresented = true }
+                    Button("Share JSON") {
+                        shareContent(ProwlLogFormatter.shareText(log: log))
+                    }
+                    Button("Share cURL") {
+                        shareContent(ProwlLogFormatter.export(logs: [log], as: .curlCommands))
+                    }
+                    Button("Create Mock") {
+                        isMockEditorPresented = true
+                    }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
             }
-        }
-        .onChange(of: viewModel.shareContent) { content in
-            guard let content else { return }
-            #if os(macOS)
-            ProwlMacExporter.save(content: content, suggestedFileName: "prowl-log.txt")
-            #else
-            sharePayload = ProwlExportPayload(content: content)
-            #endif
-        }
-        .onChange(of: viewModel.pasteboardString) { str in
-            if let str { copyToPasteboard(str, toastMessage: "Body copied") }
         }
         #if os(iOS) || os(visionOS)
         .sheet(item: $sharePayload) { payload in
@@ -153,354 +118,165 @@ public struct ProwlLogDetailView: View {
         }
     }
 
-    private var overviewView: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                HStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("STATUS")
-                            .font(.caption2.weight(.bold))
-                            .foregroundColor(.secondary)
-                        statusBadge(statusCode: log.statusCode)
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Tab.allCases) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("METHOD")
-                            .font(.caption2.weight(.bold))
-                            .foregroundColor(.secondary)
-                        methodBadge(log.method)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.headline.weight(.semibold))
+                        .foregroundColor(selectedTab == tab ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            Group {
+                                if selectedTab == tab {
+                                    LinearGradient(
+                                        colors: [Color.purple, Color.pink],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                } else {
+                                    Color.clear
+                                }
+                            }
+                        )
                 }
-                .padding(16)
-                .background(platformSecondaryBackground)
-                .cornerRadius(16)
-
-                timingCard
-
-                VStack(spacing: 16) {
-                    urlSection(title: "HOST", value: log.url?.host ?? "")
-                    Divider()
-                    urlSection(title: "PATH", value: log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
-                    Divider()
-                    urlSection(title: "FULL URL", value: log.url?.absoluteString ?? "-")
-
-                    if let err = log.errorDescription {
-                        Divider()
-                        urlSection(title: "ERROR", value: err, emphasized: true)
-                    }
-                }
-                .padding(16)
-                .background(platformSecondaryBackground)
-                .cornerRadius(16)
-            }
-            .padding()
-        }
-    }
-
-    private var timingCard: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("TOTAL DURATION")
-                    .font(.caption2.weight(.bold))
-                    .foregroundColor(.secondary)
-                Text(String(format: "%.3f", log.duration))
-                    .font(.title2.weight(.bold).monospacedDigit())
-                    .foregroundColor(.primary)
-                + Text("s")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 6) {
-                Text("STARTED AT")
-                    .font(.caption2.weight(.bold))
-                    .foregroundColor(.secondary)
-                Text(Self.timestampFormatter.string(from: log.startedAt))
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(tab.rawValue) tab")
+                .accessibilityHint("Shows \(tab.rawValue.lowercased()) details")
+                .accessibilityAddTraits(selectedTab == tab ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(16)
         .background(platformSecondaryBackground)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
     }
 
-    @ViewBuilder
-    private func urlSection(title: String, value: String, emphasized: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.caption2.weight(.bold))
-                .foregroundColor(.secondary)
-            Text(value)
-                .font(.body.monospaced())
-                .foregroundColor(emphasized ? .red : .primary)
-                .textSelection(.enabled)
-                .lineSpacing(4)
+    private var infoTabContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            infoRow("[URL]", log.url?.absoluteString ?? "-")
+            infoRow("[Method]", log.method)
+            infoRow("[Status]", log.statusCode.map { String($0) } ?? "N/A")
+            infoRow("[Request date]", Self.exportDateFormatter.string(from: log.startedAt))
+            infoRow("[Response date]", Self.exportDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))
+            infoRow("[Time interval]", String(format: "%.8f", log.duration))
+            infoRow("[Timeout]", log.timeoutInterval.map { String($0) } ?? "-")
+            infoRow("[Cache policy]", log.cachePolicy ?? "-")
+            if let error = log.errorDescription, !error.isEmpty {
+                infoRow("[Error]", error)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var headersView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                metadataSection(title: "Request Metadata", items: requestMetadataItems)
-                headerSection(title: "Request Headers", headers: log.requestHeaders)
-                headerSection(title: "Response Headers", headers: log.responseHeaders)
+    private var requestTabContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            copyButton(title: "Copy Request") {
+                copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
-            .padding()
+            sectionTitle("-- Headers --")
+            headerList(log.requestHeaders)
+            sectionTitle("-- Body --")
+            bodyBlock(text: bodyText(log.requestBody, emptyText: "Request body is empty"))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var responseTabContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            copyButton(title: "Copy Response") {
+                copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
+            }
+            sectionTitle("-- Headers --")
+            headerList(log.responseHeaders)
+            sectionTitle("-- Body --")
+            bodyBlock(text: bodyText(log.responseBody, emptyText: "Response body is empty"))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func infoRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.blue.opacity(0.9))
+            Text(value)
+                .font(.body)
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
         }
     }
 
-    private var requestMetadataItems: [(String, String)] {
-        [
-            ("URL", log.url?.absoluteString ?? "-"),
-            ("Method", log.method),
-            ("Status", log.statusCode.map { String($0) } ?? "N/A"),
-            ("Timeout", log.timeoutInterval.map { String($0) } ?? "-"),
-            ("Cache Policy", log.cachePolicy ?? "-"),
-            ("Request Date", Self.timestampFormatter.string(from: log.startedAt)),
-            ("Response Date", Self.timestampFormatter.string(from: log.startedAt.addingTimeInterval(log.duration))),
-            ("Duration", String(format: "%.6f s", log.duration)),
-            ("Request ID", log.requestID.uuidString)
-        ]
+    @ViewBuilder
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.title3.weight(.bold))
+            .foregroundColor(.purple.opacity(0.9))
     }
 
-    private func metadataSection(title: String, items: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title).font(.headline)
-                Spacer()
-                Button("Copy") {
-                    let text = items.map { "\($0.0): \($0.1)" }.joined(separator: "\n")
-                    copyToPasteboard(text, toastMessage: "Metadata copied")
-                }
-                .font(.caption.bold())
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .background(Color.blue.opacity(0.1), in: Capsule())
-                .accessibilityLabel("Copy request metadata")
-                .accessibilityHint("Copies request metadata to clipboard")
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text(item.0)
-                            .font(.caption.weight(.bold))
-                            .frame(width: 120, alignment: .leading)
-                        Text(item.1)
-                            .font(.caption.monospaced())
+    @ViewBuilder
+    private func headerList(_ headers: [String: String]) -> some View {
+        if headers.isEmpty {
+            Text("No headers")
+                .font(.body)
+                .foregroundColor(.secondary)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(headers.keys.sorted(), id: \.self) { key in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("[\(key)]")
+                            .font(.headline)
+                            .foregroundColor(.blue.opacity(0.9))
+                        Text(headers[key] ?? "")
+                            .font(.body)
+                            .foregroundColor(.primary)
                             .textSelection(.enabled)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .background(index % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
-                }
-            }
-            .background(platformSecondaryBackground)
-            .cornerRadius(8)
-        }
-    }
-
-    private func headerSection(title: String, headers: [String: String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title).font(.headline)
-                Spacer()
-                if !headers.isEmpty {
-                    Button("Copy") {
-                        let text = headers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
-                        copyToPasteboard(text, toastMessage: "\(title) copied")
-                    }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1), in: Capsule())
-                    .accessibilityLabel("Copy \(title)")
-                    .accessibilityHint("Copies \(title.lowercased()) to clipboard")
-                }
-            }
-
-            if headers.isEmpty {
-                Text("No headers").font(.caption).foregroundColor(.secondary)
-            } else {
-                VStack(spacing: 0) {
-                    let sortedKeys = headers.keys.sorted()
-                    ForEach(Array(sortedKeys.enumerated()), id: \.element) { index, key in
-                        HStack(alignment: .top, spacing: 12) {
-                            Text(key)
-                                .font(.caption.weight(.bold))
-                                .frame(width: 120, alignment: .leading)
-                            Text(headers[key] ?? "")
-                                .font(.caption.monospaced())
-                                .textSelection(.enabled)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 12)
-                        .background(index % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
                     }
                 }
-                .background(platformSecondaryBackground)
-                .cornerRadius(8)
-            }
-        }
-    }
-
-    private var bodyView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Toggle("Pretty Print JSON", isOn: Binding(
-                    get: { viewModel.isPretty },
-                    set: { _ in viewModel.handle(.togglePrettyPrint) }
-                ))
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal)
-                .padding(.top, 8)
-
-                renderableSection(title: "Request Body", renderable: viewModel.requestBody, isRequest: true)
-                renderableSection(title: "Response Body", renderable: viewModel.responseBody, isRequest: false)
-            }
-            .padding(.bottom, 24)
-        }
-    }
-
-    @ViewBuilder
-    private func renderableSection(title: String, renderable: ProwlBodyRenderable, isRequest: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title).font(.headline).padding(.horizontal)
-                Spacer()
-                if case .empty = renderable { } else {
-                    Button("Copy") { viewModel.handle(.copyBody(isRequest: isRequest)) }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(Color.blue.opacity(0.1), in: Capsule())
-                        .padding(.trailing)
-                        .accessibilityLabel("Copy \(title)")
-                        .accessibilityHint("Copies \(title.lowercased()) to clipboard")
-                }
-            }
-
-            switch renderable {
-            case .text(let attributed):
-                Text(attributed)
-                    .font(.caption.monospaced())
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(platformSecondaryBackground, in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
-
-            case .image(let data):
-                imageView(data: data)
-
-            case .empty:
-                Text("No body")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
             }
         }
     }
 
     @ViewBuilder
-    private func imageView(data: Data) -> some View {
-        #if os(iOS) || os(visionOS)
-        if let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 300)
-                .cornerRadius(12)
-                .padding(.horizontal)
+    private func bodyBlock(text: String) -> some View {
+        Text(text)
+            .font(.body.monospaced())
+            .foregroundColor(.primary)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func bodyText(_ body: NetworkLog.Body?, emptyText: String) -> String {
+        guard let body, !body.data.isEmpty else { return emptyText }
+        return ProwlLogFormatter.bodyText(from: body, pretty: true)
+    }
+
+    private func requestDumpText() -> String {
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        for key in log.requestHeaders.keys.sorted() {
+            lines.append("[\(key)]")
+            lines.append(log.requestHeaders[key] ?? "")
         }
-        #elseif os(macOS)
-        if let nsImage = NSImage(data: data) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 300)
-                .cornerRadius(12)
-                .padding(.horizontal)
+        lines.append("-- Body --")
+        lines.append(bodyText(log.requestBody, emptyText: "Request body is empty"))
+        return lines.joined(separator: "\n")
+    }
+
+    private func responseDumpText() -> String {
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        for key in log.responseHeaders.keys.sorted() {
+            lines.append("[\(key)]")
+            lines.append(log.responseHeaders[key] ?? "")
         }
-        #endif
-    }
-
-    @ViewBuilder
-    private func methodBadge(_ method: String) -> some View {
-        Text(method.uppercased())
-            .font(.caption.monospaced().weight(.bold))
-            .foregroundColor(methodColor(method))
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(methodColor(method).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-            .accessibilityLabel("Method \(method.uppercased())")
-    }
-
-    @ViewBuilder
-    private func statusBadge(statusCode: Int?) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(statusColor(statusCode))
-                .frame(width: 8, height: 8)
-            Text(statusCode.map { "\($0)" } ?? "ERR")
-                .font(.caption.monospaced().weight(.bold))
-                .foregroundColor(statusColor(statusCode))
-        }
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(statusColor(statusCode).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-        .accessibilityLabel("Status \(statusCode.map { String($0) } ?? "error")")
-    }
-
-    private func methodColor(_ method: String) -> Color {
-        switch method.uppercased() {
-        case "GET": return .blue
-        case "POST": return .green
-        case "PUT", "PATCH": return .orange
-        case "DELETE": return .red
-        default: return .secondary
-        }
-    }
-
-    private func statusColor(_ statusCode: Int?) -> Color {
-        guard let code = statusCode else { return .red }
-        switch code {
-        case 200...299: return .green
-        case 300...399: return .blue
-        case 400...499: return .orange
-        case 500...599: return .red
-        default: return .secondary
-        }
-    }
-
-    private var platformBackground: Color {
-        #if os(iOS) || os(visionOS)
-            return Color(UIColor.systemGroupedBackground)
-        #elseif os(macOS)
-            return Color(NSColor.windowBackgroundColor)
-        #else
-            return .clear
-        #endif
-    }
-
-    private var platformSecondaryBackground: Color {
-        #if os(iOS) || os(visionOS)
-            return Color(UIColor.secondarySystemGroupedBackground)
-        #elseif os(macOS)
-            return Color(NSColor.controlBackgroundColor)
-        #else
-            return .clear
-        #endif
-    }
-
-    private var segmentedPickerHorizontalPadding: CGFloat {
-        #if os(iOS) || os(visionOS)
-            return horizontalSizeClass == .compact ? 20 : 16
-        #else
-            return 16
-        #endif
+        lines.append("-- Body --")
+        lines.append(bodyText(log.responseBody, emptyText: "Response body is empty"))
+        return lines.joined(separator: "\n")
     }
 
     private func moveTab(isSwipeLeft: Bool) {
@@ -521,9 +297,25 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
+    private func copyButton(title: String, action: @escaping () -> Void) -> some View {
+        HStack {
+            Spacer()
+            Button(title) {
+                action()
+            }
+            .font(.caption.weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.blue.opacity(0.1), in: Capsule())
+            .accessibilityLabel(title)
+            .accessibilityHint("Copies this section to clipboard")
+        }
+    }
+
+    @ViewBuilder
     private var footerCreditView: some View {
         HStack(spacing: 4) {
-            Text("Copyright © 2026 Elmee")
+            Text("ini karya gua bro")
                 .foregroundColor(.secondary)
             if let siteURL = URL(string: "https://elmee.my") {
                 Link("elmee.my", destination: siteURL)
@@ -551,13 +343,21 @@ public struct ProwlLogDetailView: View {
         .accessibilityLabel(message)
     }
 
+    private func shareContent(_ content: String) {
+        #if os(macOS)
+        ProwlMacExporter.save(content: content, suggestedFileName: "prowl-log.txt")
+        #else
+        sharePayload = ProwlExportPayload(content: content)
+        #endif
+    }
+
     private func copyToPasteboard(_ string: String, toastMessage: String = "Copied") {
         #if os(iOS) || os(visionOS)
-            UIPasteboard.general.string = string
+        UIPasteboard.general.string = string
         #elseif os(macOS)
-            let p = NSPasteboard.general
-            p.clearContents()
-            p.setString(string, forType: .string)
+        let p = NSPasteboard.general
+        p.clearContents()
+        p.setString(string, forType: .string)
         #endif
         triggerCopyFeedback()
         showCopyToast(toastMessage)
@@ -583,5 +383,25 @@ public struct ProwlLogDetailView: View {
                 copyToastMessage = nil
             }
         }
+    }
+
+    private var platformBackground: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(UIColor.systemGroupedBackground)
+        #elseif os(macOS)
+        return Color(NSColor.windowBackgroundColor)
+        #else
+        return .clear
+        #endif
+    }
+
+    private var platformSecondaryBackground: Color {
+        #if os(iOS) || os(visionOS)
+        return Color(UIColor.secondarySystemGroupedBackground)
+        #elseif os(macOS)
+        return Color(NSColor.controlBackgroundColor)
+        #else
+        return .clear
+        #endif
     }
 }

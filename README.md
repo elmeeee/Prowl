@@ -4,6 +4,14 @@
   <img src="Sources/Resource/prowl_icon.png" alt="Prowl Icon" width="220" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/elmeeee/Prowl/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/elmeeee/Prowl?sort=semver"></a>
+  <a href="https://github.com/elmeeee/Prowl/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/elmeeee/Prowl/ci.yml?branch=main&label=ci"></a>
+  <img alt="iOS" src="https://img.shields.io/badge/iOS-15%2B-0A84FF">
+  <img alt="Swift" src="https://img.shields.io/badge/Swift-6.2-F05138">
+  <a href="https://github.com/elmeeee/Prowl/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/elmeeee/Prowl"></a>
+</p>
+
 Prowl is a lightweight, high-performance network debugging library for the Apple ecosystem (`iOS`, `macOS`, `watchOS`, `tvOS`, `visionOS`) built with native `Foundation` + `SwiftUI` and distributed via Swift Package Manager.
 
 ## Features
@@ -26,21 +34,21 @@ In Xcode:
 1. `File` -> `Add Package Dependencies...`
 2. Enter your repository URL for Prowl
 3. Select dependency rule version:
-   - `Up to Next Major Version` (recommended), example from `0.6.4`
+   - `Up to Next Major Version` (recommended), starting from the latest release
    - `Up to Next Minor Version`
    - `Exact Version` (locked)
 4. Add the `Prowl` product to your app target
 
 ### Version Strategy Example
 
-- **Stable updates (recommended):** `Up to Next Major` from `0.6.4`
-- **Strict lock for CI/release:** `Exact` `0.6.4`
+- **Stable updates (recommended):** `Up to Next Major` from the latest release tag
+- **Strict lock for CI/release:** `Exact` to a specific release tag
 
 If you use `Package.swift` directly, pin like this:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.6.4")
+    .package(url: "https://github.com/elmeeee/Prowl.git", exact: "<latest-release-tag>")
 ]
 ```
 

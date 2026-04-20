@@ -101,9 +101,12 @@ public struct ProwlShakeDetector: View {
 
 private extension UIApplication {
     @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
+        // Swallow shake motion events so iOS undo UI ("Undo Typing") doesn't appear.
+        if event.type == .motion, event.subtype == .motionShake {
+            ProwlShakeMonitor.postShakeDetected()
+            return
+        }
         prowl_sendEvent(event)
-        guard event.type == .motion, event.subtype == .motionShake else { return }
-        ProwlShakeMonitor.postShakeDetected()
     }
 }
 

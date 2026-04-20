@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.6.6"
+    public static let version = "0.6.7"
 
     private static var isRunning = false
     private static let startupMessage = "Prowl Inspector started | Crafted by Elmee"

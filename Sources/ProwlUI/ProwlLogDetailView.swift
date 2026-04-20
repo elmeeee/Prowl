@@ -29,6 +29,7 @@ public struct ProwlLogDetailView: View {
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         return formatter
     }()
+    private static let detailPanelHeight: CGFloat = 280
     private static let swipeMinimumDistance: CGFloat = 14
     private static let swipeCommitDistance: CGFloat = 28
     private static let swipeVelocityBoostDistance: CGFloat = 44
@@ -50,7 +51,7 @@ public struct ProwlLogDetailView: View {
         VStack(spacing: 0) {
             tabBar
                 .padding(.horizontal, 16)
-                .padding(.top, 22)
+                .padding(.top, 16)
                 .padding(.bottom, 14)
 
             Divider()
@@ -87,7 +88,7 @@ public struct ProwlLogDetailView: View {
             )
 
             footerCreditView
-                .padding(.bottom, 10)
+                .padding(.bottom, 4)
         }
         .background(platformBackground)
         .navigationTitle("Details")
@@ -193,10 +194,10 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Request") {
                 copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
-            sectionCard(title: "Headers") {
+            fixedHeightSectionCard(title: "Headers") {
                 headerList(log.requestHeaders)
             }
-            sectionCard(title: "Body") {
+            fixedHeightSectionCard(title: "Body") {
                 bodyView(log.requestBody, emptyText: "Request body is empty")
             }
         }
@@ -207,11 +208,15 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Response") {
                 copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
             }
-            sectionCard(title: "Headers") {
+            fixedHeightSectionCard(title: "Headers") {
                 headerList(log.responseHeaders)
             }
-            sectionCard(title: "Body") {
-                bodyView(log.responseBody, emptyText: "Response body is empty")
+            fixedHeightSectionCard(title: "Body") {
+                bodyView(
+                    log.responseBody,
+                    emptyText: "Response body is empty",
+                    applyJSONHighlighting: true
+                )
             }
         }
     }
@@ -252,6 +257,17 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
+    private func fixedHeightSectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        sectionCard(title: title) {
+            ScrollView(.vertical, showsIndicators: true) {
+                content()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(height: Self.detailPanelHeight)
+    }
+
+    @ViewBuilder
     private func labeledValue(_ label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
@@ -285,10 +301,10 @@ public struct ProwlLogDetailView: View {
                 ForEach(headers.keys.sorted(), id: \.self) { key in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(key)
-                            .font(.caption.weight(.semibold))
+                            .font(.caption2.weight(.semibold))
                             .foregroundColor(.secondary)
                         Text(headers[key] ?? "")
-                            .font(.body)
+                            .font(.callout)
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
                     }
@@ -298,18 +314,35 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func bodyView(_ body: NetworkLog.Body?, emptyText: String) -> some View {
+    private func bodyView(
+        _ body: NetworkLog.Body?,
+        emptyText: String,
+        applyJSONHighlighting: Bool = false
+    ) -> some View {
         let text = bodyText(body, emptyText: emptyText)
-        Text(text)
-            .font(.footnote.monospaced())
-            .foregroundColor(.primary)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(platformBodyBackground)
-            )
+        if applyJSONHighlighting, let body {
+            let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
+            Text(highlighted)
+                .font(.footnote.monospaced())
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(platformBodyBackground)
+                )
+        } else {
+            Text(text)
+                .font(.footnote.monospaced())
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(platformBodyBackground)
+                )
+        }
     }
 
     private func bodyText(_ body: NetworkLog.Body?, emptyText: String) -> String {
@@ -383,7 +416,7 @@ public struct ProwlLogDetailView: View {
 
     @ViewBuilder
     private var footerCreditView: some View {
-        HStack(spacing: 4) {
+        VStack(spacing: 4) {
             Text("Copyright © 2026 Elmee")
                 .foregroundColor(.secondary)
             if let siteURL = URL(string: "https://elmee.my") {

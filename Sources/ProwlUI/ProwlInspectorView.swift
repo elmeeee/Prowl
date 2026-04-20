@@ -101,7 +101,17 @@ public struct ProwlInspectorView: View {
     }
 
     private var requestBodyCaptureModeRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
+            Text("Logging")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(ProwlRuntime.isLoggingEnabled ? "On" : "Off")
+                .font(.caption2.weight(.bold))
+                .foregroundColor(ProwlRuntime.isLoggingEnabled ? .green : .red)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background((ProwlRuntime.isLoggingEnabled ? Color.green : Color.red).opacity(0.15), in: Capsule())
+
             Text("Body Capture")
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(.secondary)

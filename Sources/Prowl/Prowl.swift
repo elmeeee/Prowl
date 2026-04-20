@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.6.9"
+    public static let version = "0.6.10"
 
     private static var isRunning = false
     private static let startupMessage = "Prowl Inspector started | Crafted by Elmee"
@@ -25,6 +25,12 @@ public enum Prowl {
     public static var ignoredURLs: Set<String> {
         get { ProwlRuntime.ignoredURLs }
         set { ProwlRuntime.ignoredURLs = newValue }
+    }
+
+    /// Regex URL patterns that should be ignored by Prowl's interceptor.
+    public static var ignoredURLRegexes: Set<String> {
+        get { ProwlRuntime.ignoredURLRegexes }
+        set { ProwlRuntime.ignoredURLRegexes = newValue }
     }
     
     /// Optional custom URLSessionDelegate to handle Certificate Pinning / mTLS
@@ -39,18 +45,29 @@ public enum Prowl {
         set { ProwlRuntime.requestBodyCaptureMode = newValue }
     }
 
+    /// Enables/disables request logging without stopping the inspector UI.
+    public static var isLoggingEnabled: Bool {
+        get { ProwlRuntime.isLoggingEnabled }
+        set { ProwlRuntime.isLoggingEnabled = newValue }
+    }
+
     public static func ignoreURL(_ urlString: String) {
         ProwlRuntime.ignoredURLs.insert(urlString)
     }
 
+    public static func ignoreURL(regex pattern: String) {
+        ProwlRuntime.ignoredURLRegexes.insert(pattern)
+    }
+
     /// Registers `ProwlProtocol` once for process-wide interception.
-    public static func start(ignoredURLs: [String] = []) {
+    public static func start(ignoredURLs: [String] = [], ignoredURLRegexes: [String] = []) {
         guard !isRunning else {
             log("[\(version)] \(startupMessage) (already running)")
             return
         }
 
         ignoredURLs.forEach { ignoreURL($0) }
+        ignoredURLRegexes.forEach { ignoreURL(regex: $0) }
 
         URLProtocol.registerClass(ProwlProtocol.self)
         #if os(iOS)
@@ -113,13 +130,15 @@ public enum Prowl {
     public static func configure(
         storage: ProwlStorage? = nil,
         masker: SensitiveDataMasker? = nil,
-        requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil
+        requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil,
+        isLoggingEnabled: Bool? = nil
     ) {
         Task {
             await ProwlRuntime.shared.configure(
                 storage: storage,
                 masker: masker,
-                requestBodyCaptureMode: requestBodyCaptureMode
+                requestBodyCaptureMode: requestBodyCaptureMode,
+                isLoggingEnabled: isLoggingEnabled
             )
         }
     }

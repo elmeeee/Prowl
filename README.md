@@ -16,11 +16,13 @@ Prowl is a lightweight, high-performance network debugging library for the Apple
 ## Features
 
 - URL interception via `URLProtocol`
+- Runtime logging toggle (pause/resume interception)
 - Thread-safe log storage via `actor`
 - FIFO log buffer (default `200`)
 - Opt-in sensitive data masking (e.g. `Authorization`, `password`)
 - SwiftUI inspector dashboard + detail tabs
 - Real-time search and status filtering
+- URL ignore rules via substring and regex pattern
 - Export logs as formatted text or cURL commands
 - Activation shortcuts:
   - iOS shake gesture
@@ -92,6 +94,16 @@ Alternatively, you can dynamically ignore URLs later at runtime:
 
 ```swift
 Prowl.ignoreURL("https://res.cloudinary.com/")
+Prowl.ignoreURL(regex: #"https://api\.example\.com/v[0-9]+/health"#)
+```
+
+You can also pass regex rules directly at startup:
+
+```swift
+Prowl.start(
+    ignoredURLs: ["https://firebaselogging.googleapis.com"],
+    ignoredURLRegexes: [#"https://api\.example\.com/internal/.*"#]
+)
 ```
 
 ## Check Version
@@ -137,6 +149,34 @@ let masker = SensitiveDataMasker(
 
 Prowl.configure(storage: storage, masker: masker)
 Prowl.start()
+```
+
+## Stream Request Body (Safe Path)
+
+For requests that use `httpBodyStream`, attach a snapshot at request-build time so Prowl can log payload safely without mutating network transport:
+
+```swift
+import ProwlCore
+
+var request = URLRequest(url: endpoint)
+request.httpMethod = "POST"
+
+let payload = try JSONEncoder().encode(body)
+request.httpBodyStream = InputStream(data: payload)
+request.attachProwlBodySnapshot(payload) // safe logging snapshot
+```
+
+If you cannot attach snapshots from the request builder, you can temporarily use aggressive capture mode from the inspector settings, but safe snapshot attachment is recommended for maximum API compatibility.
+
+When aggressive capture is enabled, Prowl automatically avoids replay for high-risk requests (for example chunked transfer, multipart form data, or `Expect: 100-continue`) to reduce transport-side failures.
+
+## Toggle Logging at Runtime
+
+```swift
+import Prowl
+
+Prowl.isLoggingEnabled = false // pause interception
+Prowl.isLoggingEnabled = true  // resume interception
 ```
 
 ## Custom URLSessionDelegate (Pinning / mTLS)

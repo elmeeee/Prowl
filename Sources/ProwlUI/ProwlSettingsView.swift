@@ -19,6 +19,7 @@ public struct ProwlSettingsView: View {
     
     @Environment(\.dismiss) private var dismiss
     @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
+    @State private var isLoggingEnabled = true
     @State private var aggressiveRequestBodyCapture = false
     
     public init(
@@ -29,6 +30,7 @@ public struct ProwlSettingsView: View {
         self.viewModel = viewModel
         self.onExportText = onExportText
         self.onExportCURL = onExportCURL
+        _isLoggingEnabled = State(initialValue: ProwlRuntime.isLoggingEnabled)
         _aggressiveRequestBodyCapture = State(
             initialValue: ProwlRuntime.requestBodyCaptureMode == .aggressiveStreamReplay
         )
@@ -85,6 +87,7 @@ public struct ProwlSettingsView: View {
                 .pickerStyle(.segmented)
             }
 
+            loggingSection
             requestBodyCaptureSection
 
             Section(header: Text("Export & Share")) {
@@ -153,6 +156,15 @@ public struct ProwlSettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("Aggressive stream body capture", isOn: $aggressiveRequestBodyCapture)
                         Text("Default OFF (safe). Turn ON only when you need payload from stream-based requests. Safe mode is recommended to avoid request compatibility issues.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                macSection("Logging") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Enable request logging", isOn: $isLoggingEnabled)
+                        Text("When OFF, Prowl inspector stays available but request interception is paused.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -228,6 +240,18 @@ public struct ProwlSettingsView: View {
         }
         .onChange(of: aggressiveRequestBodyCapture) { isEnabled in
             ProwlRuntime.requestBodyCaptureMode = isEnabled ? .aggressiveStreamReplay : .safeBestEffort
+        }
+    }
+
+    private var loggingSection: some View {
+        Section(header: Text("Logging")) {
+            Toggle("Enable request logging", isOn: $isLoggingEnabled)
+            Text("When OFF, Prowl inspector stays available but request interception is paused.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+        .onChange(of: isLoggingEnabled) { isEnabled in
+            ProwlRuntime.isLoggingEnabled = isEnabled
         }
     }
 

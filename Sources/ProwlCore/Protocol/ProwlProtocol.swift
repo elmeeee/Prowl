@@ -8,6 +8,10 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
     private var dataTask: URLSessionDataTask?
 
     override public class func canInit(with request: URLRequest) -> Bool {
+        guard ProwlRuntime.isLoggingEnabled else {
+            return false
+        }
+
         guard let scheme = request.url?.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
             return false
         }
@@ -16,12 +20,9 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             return false
         }
         
-        if let absoluteString = request.url?.absoluteString {
-            for ignoredPattern in ProwlRuntime.ignoredURLs {
-                if absoluteString.contains(ignoredPattern) {
-                    return false
-                }
-            }
+        if let absoluteString = request.url?.absoluteString,
+           ProwlRuntime.shouldIgnore(absoluteString) {
+            return false
         }
 
         return true
@@ -190,7 +191,14 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             return bestEffort
         }
 
+        if let snapshotBody = ProwlRequestBodySnapshot.body(from: request), !snapshotBody.isEmpty {
+            return snapshotBody
+        }
+
         guard mode == .aggressiveStreamReplay else {
+            return nil
+        }
+        guard ProwlRequestReplaySafety.isAggressiveReplaySafe(for: request) else {
             return nil
         }
 
@@ -206,8 +214,11 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
 
         // Rebuild outbound payload from captured bytes after consuming original stream.
+        // Keep framing headers consistent with the new body representation.
         mutableRequest.httpBody = captured
         mutableRequest.httpBodyStream = nil
+        mutableRequest.setValue(String(captured.count), forHTTPHeaderField: "Content-Length")
+        mutableRequest.setValue(nil, forHTTPHeaderField: "Transfer-Encoding")
         return captured
     }
 

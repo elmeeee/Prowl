@@ -38,6 +38,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutableRequest)
         URLProtocol.setProperty(UUID().uuidString, forKey: Self.requestIDKey, in: mutableRequest)
+        let requestBodyData = Self.captureBodyData(from: mutableRequest)
 
         let proxiedRequest = mutableRequest as URLRequest
         let startedAt = Date()
@@ -53,6 +54,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
                 
                 self.complete(
                     request: proxiedRequest,
+                    requestBodyData: requestBodyData,
                     startedAt: startedAt,
                     data: mockRule.mockBody,
                     response: mockResponse,
@@ -67,6 +69,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
                 guard let self else { return }
                 self.complete(
                     request: proxiedRequest,
+                    requestBodyData: requestBodyData,
                     startedAt: startedAt,
                     data: data ?? Data(),
                     response: response,
@@ -86,6 +89,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
     
     private func complete(
         request: URLRequest,
+        requestBodyData: Data?,
         startedAt: Date,
         data: Data,
         response: URLResponse?,
@@ -118,7 +122,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
             let requestBody = snapshot.masker.mask(
-                body: request.httpBody,
+                body: requestBodyData ?? request.httpBody,
                 contentType: request.value(forHTTPHeaderField: "Content-Type")
             )
             let responseBody = snapshot.masker.mask(
@@ -142,5 +146,40 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             
             await snapshot.storage.append(log)
         }
+    }
+
+    private static func captureBodyData(from mutableRequest: NSMutableURLRequest) -> Data? {
+        if let body = mutableRequest.httpBody, !body.isEmpty {
+            return body
+        }
+
+        guard let stream = mutableRequest.httpBodyStream else {
+            return nil
+        }
+
+        var captured = Data()
+        stream.open()
+        defer { stream.close() }
+
+        let bufferSize = 4096
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+
+        while stream.hasBytesAvailable {
+            let readCount = stream.read(&buffer, maxLength: bufferSize)
+            if readCount < 0 {
+                return nil
+            }
+            if readCount == 0 {
+                break
+            }
+            captured.append(buffer, count: readCount)
+        }
+
+        guard !captured.isEmpty else { return nil }
+
+        // Reassign body so upstream request still sends the same payload after reading the stream.
+        mutableRequest.httpBody = captured
+        mutableRequest.httpBodyStream = nil
+        return captured
     }
 }

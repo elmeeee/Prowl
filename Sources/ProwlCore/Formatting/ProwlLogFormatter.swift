@@ -47,8 +47,36 @@ public enum ProwlLogFormatter {
            let string = String(data: prettyData, encoding: .utf8) {
             return string
         }
+        if isFormURLEncoded(body.contentType),
+           let formText = String(data: body.data, encoding: .utf8),
+           let formatted = prettyFormURLEncodedBody(formText) {
+            return formatted
+        }
         if let utf8 = String(data: body.data, encoding: .utf8) { return utf8 }
         return body.data.base64EncodedString()
+    }
+
+    private static func isFormURLEncoded(_ contentType: String?) -> Bool {
+        guard let contentType else { return false }
+        return contentType.lowercased().contains("application/x-www-form-urlencoded")
+    }
+
+    private static func prettyFormURLEncodedBody(_ body: String) -> String? {
+        let pairs = body.split(separator: "&", omittingEmptySubsequences: false)
+        guard !pairs.isEmpty else { return nil }
+
+        let lines = pairs.map { pair -> String in
+            let components = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            let rawKey = components.indices.contains(0) ? String(components[0]) : ""
+            let rawValue = components.indices.contains(1) ? String(components[1]) : ""
+            return "\(decodeFormComponent(rawKey)) = \(decodeFormComponent(rawValue))"
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func decodeFormComponent(_ text: String) -> String {
+        let plusAsSpaces = text.replacingOccurrences(of: "+", with: " ")
+        return plusAsSpaces.removingPercentEncoding ?? plusAsSpaces
     }
 
     private static func formattedText(logs: [NetworkLog]) -> String {

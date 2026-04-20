@@ -32,13 +32,18 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override public func startLoading() {
-        let requestBodyData = Self.captureRequestBodyBestEffort(from: request)
         guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutableRequest)
         URLProtocol.setProperty(UUID().uuidString, forKey: Self.requestIDKey, in: mutableRequest)
+
+        let requestBodyData = Self.captureRequestBody(
+            from: request,
+            mutableRequest: mutableRequest,
+            mode: ProwlRuntime.requestBodyCaptureMode
+        )
 
         let proxiedRequest = mutableRequest as URLRequest
         let startedAt = Date()
@@ -174,6 +179,36 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
 
         return readAllBytes(from: copiedStream)
+    }
+
+    private static func captureRequestBody(
+        from request: URLRequest,
+        mutableRequest: NSMutableURLRequest,
+        mode: ProwlRequestBodyCaptureMode
+    ) -> Data? {
+        if let bestEffort = captureRequestBodyBestEffort(from: request) {
+            return bestEffort
+        }
+
+        guard mode == .aggressiveStreamReplay else {
+            return nil
+        }
+
+        return replayBodyStreamFromOriginalRequest(into: mutableRequest)
+    }
+
+    private static func replayBodyStreamFromOriginalRequest(into mutableRequest: NSMutableURLRequest) -> Data? {
+        guard let originalStream = mutableRequest.httpBodyStream else {
+            return nil
+        }
+        guard let captured = readAllBytes(from: originalStream), !captured.isEmpty else {
+            return nil
+        }
+
+        // Rebuild outbound payload from captured bytes after consuming original stream.
+        mutableRequest.httpBody = captured
+        mutableRequest.httpBodyStream = nil
+        return captured
     }
 
     private static func readAllBytes(from stream: InputStream) -> Data? {

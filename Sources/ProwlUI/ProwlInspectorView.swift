@@ -61,6 +61,8 @@ public struct ProwlInspectorView: View {
 
     private var dashboardList: some View {
         List(selection: $selectedLogID) {
+            requestBodyCaptureModeRow
+
             ForEach(viewModel.filteredLogs) { log in
                 #if os(macOS) || os(visionOS)
                 ProwlDashboardRowView(log: log)
@@ -96,6 +98,22 @@ public struct ProwlInspectorView: View {
             Color.clear.frame(height: 10)
         }
         #endif
+    }
+
+    private var requestBodyCaptureModeRow: some View {
+        HStack(spacing: 8) {
+            Text("Body Capture")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(requestBodyCaptureModeTitle)
+                .font(.caption2.weight(.bold))
+                .foregroundColor(requestBodyCaptureModeColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(requestBodyCaptureModeColor.opacity(0.15), in: Capsule())
+            Spacer()
+        }
+        .listRowBackground(Color.clear)
     }
 
     #if os(macOS) || os(visionOS)
@@ -214,5 +232,23 @@ public struct ProwlInspectorView: View {
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var requestBodyCaptureModeTitle: String {
+        switch ProwlRuntime.requestBodyCaptureMode {
+        case .safeBestEffort:
+            return "Safe"
+        case .aggressiveStreamReplay:
+            return "Aggressive"
+        }
+    }
+
+    private var requestBodyCaptureModeColor: Color {
+        switch ProwlRuntime.requestBodyCaptureMode {
+        case .safeBestEffort:
+            return .green
+        case .aggressiveStreamReplay:
+            return .orange
+        }
     }
 }

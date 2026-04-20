@@ -29,10 +29,6 @@ public struct ProwlLogDetailView: View {
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         return formatter
     }()
-    private static let swipeMinimumDistance: CGFloat = 14
-    private static let swipeCommitDistance: CGFloat = 28
-    private static let swipeVelocityBoostDistance: CGFloat = 44
-    private static let swipeHorizontalDominanceRatio: CGFloat = 1.25
     private static let titleFontSize: CGFloat = 14
     private static let contentFontSize: CGFloat = 12
 
@@ -72,21 +68,6 @@ public struct ProwlLogDetailView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 24)
             }
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: Self.swipeMinimumDistance)
-                    .onEnded { value in
-                        let horizontal = value.translation.width
-                        let vertical = value.translation.height
-                        let predictedHorizontal = value.predictedEndTranslation.width
-                        guard shouldSwitchTab(
-                            horizontalTranslation: horizontal,
-                            verticalTranslation: vertical,
-                            predictedHorizontalTranslation: predictedHorizontal
-                        ) else { return }
-                        moveTab(isSwipeLeft: effectiveHorizontalTranslation(horizontal: horizontal, predictedHorizontal: predictedHorizontal) < 0)
-                    }
-            )
 
             footerCreditView
                 .padding(.top, 10)
@@ -401,46 +382,6 @@ public struct ProwlLogDetailView: View {
         lines.append("Body")
         lines.append(bodyText(log.responseBody, emptyText: "Response body is empty"))
         return lines.joined(separator: "\n")
-    }
-
-    private func moveTab(isSwipeLeft: Bool) {
-        let allTabs = Tab.allCases
-        guard let currentIndex = allTabs.firstIndex(of: selectedTab) else { return }
-
-        let nextIndex: Int
-        if isSwipeLeft {
-            nextIndex = min(currentIndex + 1, allTabs.count - 1)
-        } else {
-            nextIndex = max(currentIndex - 1, 0)
-        }
-
-        guard nextIndex != currentIndex else { return }
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedTab = allTabs[nextIndex]
-        }
-    }
-
-    private func shouldSwitchTab(
-        horizontalTranslation: CGFloat,
-        verticalTranslation: CGFloat,
-        predictedHorizontalTranslation: CGFloat
-    ) -> Bool {
-        let horizontalAbs = abs(horizontalTranslation)
-        let verticalAbs = abs(verticalTranslation)
-        let predictedAbs = abs(predictedHorizontalTranslation)
-
-        // Ignore mostly-vertical drags so scroll remains natural.
-        guard horizontalAbs > (verticalAbs * Self.swipeHorizontalDominanceRatio) else { return false }
-
-        // Accept either direct distance or a short-but-fast flick.
-        return horizontalAbs >= Self.swipeCommitDistance || predictedAbs >= Self.swipeVelocityBoostDistance
-    }
-
-    private func effectiveHorizontalTranslation(horizontal: CGFloat, predictedHorizontal: CGFloat) -> CGFloat {
-        if abs(predictedHorizontal) > abs(horizontal) {
-            return predictedHorizontal
-        }
-        return horizontal
     }
 
     @ViewBuilder

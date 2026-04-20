@@ -12,7 +12,7 @@ import ProwlCore
 
 @MainActor
 public enum Prowl {
-    public static let version = "0.6.8"
+    public static let version = "0.6.9"
 
     private static var isRunning = false
     private static let startupMessage = "Prowl Inspector started | Crafted by Elmee"
@@ -31,6 +31,12 @@ public enum Prowl {
     public static var customSessionDelegate: URLSessionDelegate? {
         get { ProwlRuntime.customSessionDelegate }
         set { ProwlRuntime.customSessionDelegate = newValue }
+    }
+
+    /// Controls how request bodies backed by `httpBodyStream` are captured for logs.
+    public static var requestBodyCaptureMode: ProwlRequestBodyCaptureMode {
+        get { ProwlRuntime.requestBodyCaptureMode }
+        set { ProwlRuntime.requestBodyCaptureMode = newValue }
     }
 
     public static func ignoreURL(_ urlString: String) {
@@ -106,10 +112,15 @@ public enum Prowl {
     /// Allows host apps to override defaults while preserving zero side-effects.
     public static func configure(
         storage: ProwlStorage? = nil,
-        masker: SensitiveDataMasker? = nil
+        masker: SensitiveDataMasker? = nil,
+        requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil
     ) {
         Task {
-            await ProwlRuntime.shared.configure(storage: storage, masker: masker)
+            await ProwlRuntime.shared.configure(
+                storage: storage,
+                masker: masker,
+                requestBodyCaptureMode: requestBodyCaptureMode
+            )
         }
     }
 

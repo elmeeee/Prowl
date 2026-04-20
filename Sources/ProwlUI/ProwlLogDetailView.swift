@@ -34,6 +34,8 @@ public struct ProwlLogDetailView: View {
     private static let swipeCommitDistance: CGFloat = 28
     private static let swipeVelocityBoostDistance: CGFloat = 44
     private static let swipeHorizontalDominanceRatio: CGFloat = 1.25
+    private static let titleFontSize: CGFloat = 14
+    private static let contentFontSize: CGFloat = 12
 
     public let log: NetworkLog
 
@@ -51,8 +53,8 @@ public struct ProwlLogDetailView: View {
         VStack(spacing: 0) {
             tabBar
                 .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 14)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
 
             Divider()
 
@@ -88,7 +90,8 @@ public struct ProwlLogDetailView: View {
             )
 
             footerCreditView
-                .padding(.bottom, 4)
+                .padding(.top, 10)
+                .padding(.bottom, 2)
         }
         .background(platformBackground)
         .navigationTitle("Details")
@@ -138,7 +141,7 @@ public struct ProwlLogDetailView: View {
                     }
                 } label: {
                     Text(tab.rawValue)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: Self.titleFontSize, weight: .semibold))
                         .foregroundColor(selectedTab == tab ? .primary : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -163,7 +166,7 @@ public struct ProwlLogDetailView: View {
 
     private var infoTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionCard(title: "Endpoint") {
+            fixedHeightSectionCard(title: "Endpoint") {
                 VStack(alignment: .leading, spacing: 8) {
                     labeledValue("URL", value: log.url?.absoluteString ?? "-")
                     Divider()
@@ -174,7 +177,7 @@ public struct ProwlLogDetailView: View {
                 }
             }
 
-            sectionCard(title: "Timing") {
+            fixedHeightSectionCard(title: "Timing") {
                 VStack(alignment: .leading, spacing: 10) {
                     labeledValue("Request Time", value: Self.detailDateFormatter.string(from: log.startedAt))
                     labeledValue("Response Time", value: Self.detailDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))
@@ -197,8 +200,26 @@ public struct ProwlLogDetailView: View {
             fixedHeightSectionCard(title: "Headers") {
                 headerList(log.requestHeaders)
             }
-            fixedHeightSectionCard(title: "Body") {
-                bodyView(log.requestBody, emptyText: "Request body is empty")
+            fixedHeightSectionCard(
+                title: "Body",
+                trailing: {
+                    Button("Copy") {
+                        copyToPasteboard(
+                            bodyText(log.requestBody, emptyText: "Request body is empty"),
+                            toastMessage: "Request body copied"
+                        )
+                    }
+                    .font(.system(size: Self.contentFontSize, weight: .bold))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.blue.opacity(0.1), in: Capsule())
+                }
+            ) {
+                bodyView(
+                    log.requestBody,
+                    emptyText: "Request body is empty",
+                    applyJSONHighlighting: true
+                )
             }
         }
     }
@@ -225,13 +246,13 @@ public struct ProwlLogDetailView: View {
     private func sectionHeader(title: String, onCopy: @escaping () -> Void) -> some View {
         HStack {
             Text(title)
-                .font(.headline)
+                .font(.system(size: Self.titleFontSize, weight: .semibold))
                 .foregroundColor(.primary)
             Spacer()
             Button("Copy") {
                 onCopy()
             }
-            .font(.caption.weight(.bold))
+            .font(.system(size: Self.contentFontSize, weight: .bold))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Color.blue.opacity(0.1), in: Capsule())
@@ -241,12 +262,20 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func sectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func sectionCard<Content: View, Trailing: View>(
+        title: String,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() },
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption.weight(.bold))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
+            HStack {
+                Text(title)
+                    .font(.system(size: Self.titleFontSize, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+                trailing()
+            }
             content()
         }
         .padding(14)
@@ -257,8 +286,12 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func fixedHeightSectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        sectionCard(title: title) {
+    private func fixedHeightSectionCard<Content: View, Trailing: View>(
+        title: String,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() },
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        sectionCard(title: title, trailing: trailing) {
             ScrollView(.vertical, showsIndicators: true) {
                 content()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -271,10 +304,10 @@ public struct ProwlLogDetailView: View {
     private func labeledValue(_ label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.caption.weight(.semibold))
+                .font(.system(size: Self.contentFontSize, weight: .semibold))
                 .foregroundColor(.secondary)
             Text(value)
-                .font(.body)
+                .font(.system(size: Self.contentFontSize))
                 .foregroundColor(.primary)
                 .textSelection(.enabled)
         }
@@ -283,7 +316,7 @@ public struct ProwlLogDetailView: View {
     @ViewBuilder
     private func capsuleTag(text: String, color: Color) -> some View {
         Text(text)
-            .font(.caption.monospaced().weight(.bold))
+            .font(.system(size: Self.contentFontSize, weight: .bold, design: .monospaced))
             .foregroundColor(color)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -294,17 +327,17 @@ public struct ProwlLogDetailView: View {
     private func headerList(_ headers: [String: String]) -> some View {
         if headers.isEmpty {
             Text("No headers")
-                .font(.subheadline)
+                .font(.system(size: Self.contentFontSize))
                 .foregroundColor(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(headers.keys.sorted(), id: \.self) { key in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(key)
-                            .font(.caption2.weight(.semibold))
+                            .font(.system(size: Self.contentFontSize, weight: .semibold))
                             .foregroundColor(.secondary)
                         Text(headers[key] ?? "")
-                            .font(.callout)
+                            .font(.system(size: Self.contentFontSize))
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
                     }
@@ -323,7 +356,7 @@ public struct ProwlLogDetailView: View {
         if applyJSONHighlighting, let body {
             let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
             Text(highlighted)
-                .font(.footnote.monospaced())
+                .font(.system(size: Self.contentFontSize, design: .monospaced))
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
@@ -333,7 +366,7 @@ public struct ProwlLogDetailView: View {
                 )
         } else {
             Text(text)
-                .font(.footnote.monospaced())
+                .font(.system(size: Self.contentFontSize, design: .monospaced))
                 .foregroundColor(.primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -424,7 +457,7 @@ public struct ProwlLogDetailView: View {
                     .foregroundColor(.accentColor)
             }
         }
-        .font(.caption2)
+        .font(.system(size: Self.contentFontSize))
         .lineLimit(1)
     }
 
@@ -434,7 +467,7 @@ public struct ProwlLogDetailView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
             Text(message)
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: Self.contentFontSize, weight: .semibold))
                 .foregroundColor(.primary)
         }
         .padding(.horizontal, 14)

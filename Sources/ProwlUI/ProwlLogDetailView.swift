@@ -29,7 +29,6 @@ public struct ProwlLogDetailView: View {
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         return formatter
     }()
-    private static let detailPanelHeight: CGFloat = 280
     private static let swipeMinimumDistance: CGFloat = 14
     private static let swipeCommitDistance: CGFloat = 28
     private static let swipeVelocityBoostDistance: CGFloat = 44
@@ -292,12 +291,9 @@ public struct ProwlLogDetailView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         sectionCard(title: title, trailing: trailing) {
-            ScrollView(.vertical, showsIndicators: true) {
-                content()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: Self.detailPanelHeight)
     }
 
     @ViewBuilder

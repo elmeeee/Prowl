@@ -104,13 +104,13 @@ public enum ProwlLogFormatter {
         }
         chunks.append("-- Body --")
         chunks.append(responseBodyText)
-        chunks.append("logged via prowl - [https://github.com/elmeeee/prowl]")
 
         if let responseBody = log.responseBody, !responseBody.data.isEmpty {
             let rawResponse = String(data: responseBody.data, encoding: .utf8) ?? responseBody.data.base64EncodedString()
             chunks.append(rawResponse)
         }
 
+        chunks.append("logged via prowl - [https://github.com/elmeeee/prowl]")
         return chunks.joined(separator: "\n\n")
     }
 
@@ -144,7 +144,7 @@ public enum ProwlLogFormatter {
         return logs.map { log in
             var c: [String] = []
 
-            c.append("** INFO **")
+            c.append("*INFO*")
             c.append("[URL]\n\(log.url?.absoluteString ?? "-")\n")
             c.append("[Method]\n\(log.method)\n")
             c.append("[Status]\n\(log.statusCode.map { String($0) } ?? "N/A")\n")
@@ -155,7 +155,7 @@ public enum ProwlLogFormatter {
             c.append("[Cache policy]\n\(log.cachePolicy ?? "-")\n")
             if let error = log.errorDescription { c.append("[Error]\n\(error)\n") }
 
-            c.append("** REQUEST **")
+            c.append("*REQUEST*")
             c.append("-- Headers --\n")
             for key in log.requestHeaders.keys.sorted() {
                 c.append("[\(key)]\n\(log.requestHeaders[key] ?? "")\n")

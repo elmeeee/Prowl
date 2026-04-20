@@ -32,13 +32,13 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override public func startLoading() {
+        let requestBodyData = Self.captureRequestBodyBestEffort(from: request)
         guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutableRequest)
         URLProtocol.setProperty(UUID().uuidString, forKey: Self.requestIDKey, in: mutableRequest)
-        let requestBodyData = Self.captureBodyData(from: mutableRequest)
 
         let proxiedRequest = mutableRequest as URLRequest
         let startedAt = Date()
@@ -125,13 +125,12 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         let timeoutInterval = request.timeoutInterval
         let cachePolicy = Self.cachePolicyName(request.cachePolicy)
         let errorDescription = error?.localizedDescription
-        let requestBodyPayload = requestBodyData ?? request.httpBody
 
         Task {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
             let requestBody = snapshot.masker.mask(
-                body: requestBodyPayload,
+                body: requestBodyData ?? request.httpBody,
                 contentType: requestContentType
             )
             let responseBody = snapshot.masker.mask(
@@ -159,15 +158,25 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
     }
 
-    private static func captureBodyData(from mutableRequest: NSMutableURLRequest) -> Data? {
-        if let body = mutableRequest.httpBody, !body.isEmpty {
+    /// Captures request body without mutating the outbound request payload.
+    /// For stream-backed bodies, we only read from a copied stream when available.
+    private static func captureRequestBodyBestEffort(from request: URLRequest) -> Data? {
+        if let body = request.httpBody, !body.isEmpty {
             return body
         }
 
-        guard let stream = mutableRequest.httpBodyStream else {
+        guard
+            let stream = request.httpBodyStream,
+            let copyable = stream as? NSCopying,
+            let copiedStream = copyable.copy(with: nil) as? InputStream
+        else {
             return nil
         }
 
+        return readAllBytes(from: copiedStream)
+    }
+
+    private static func readAllBytes(from stream: InputStream) -> Data? {
         var captured = Data()
         stream.open()
         defer { stream.close() }
@@ -186,12 +195,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             captured.append(buffer, count: readCount)
         }
 
-        guard !captured.isEmpty else { return nil }
-
-        // Reassign body so upstream request still sends the same payload after reading the stream.
-        mutableRequest.httpBody = captured
-        mutableRequest.httpBodyStream = nil
-        return captured
+        return captured.isEmpty ? nil : captured
     }
 
     private static func cachePolicyName(_ policy: URLRequest.CachePolicy) -> String {

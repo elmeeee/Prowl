@@ -26,21 +26,21 @@ In Xcode:
 1. `File` -> `Add Package Dependencies...`
 2. Enter your repository URL for Prowl
 3. Select dependency rule version:
-   - `Up to Next Major Version` (recommended), example from `0.6.1`
+   - `Up to Next Major Version` (recommended), example from `0.6.2`
    - `Up to Next Minor Version`
    - `Exact Version` (locked)
 4. Add the `Prowl` product to your app target
 
 ### Version Strategy Example
 
-- **Stable updates (recommended):** `Up to Next Major` from `0.6.1`
-- **Strict lock for CI/release:** `Exact` `0.6.1`
+- **Stable updates (recommended):** `Up to Next Major` from `0.6.2`
+- **Strict lock for CI/release:** `Exact` `0.6.2`
 
 If you use `Package.swift` directly, pin like this:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.6.1")
+    .package(url: "https://github.com/your-org/Prowl.git", exact: "0.6.2")
 ]
 ```
 

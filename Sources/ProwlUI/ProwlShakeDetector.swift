@@ -30,13 +30,6 @@ public enum ProwlShakeMonitor {
             swizzledFrom: UIApplication.self,
             swizzled: #selector(UIApplication.prowl_sendEvent(_:))
         )
-        swizzleMethod(
-            on: UIWindow.self,
-            original: #selector(UIWindow.motionEnded(_:with:)),
-            swizzledFrom: UIWindow.self,
-            swizzled: #selector(UIWindow.prowl_motionEnded(_:with:))
-        )
-
         UIApplication.shared.applicationSupportsShakeToEdit = true
     }
 
@@ -110,14 +103,6 @@ private extension UIApplication {
     @objc dynamic func prowl_sendEvent(_ event: UIEvent) {
         prowl_sendEvent(event)
         guard event.type == .motion, event.subtype == .motionShake else { return }
-        ProwlShakeMonitor.postShakeDetected()
-    }
-}
-
-private extension UIWindow {
-    @objc dynamic func prowl_motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        prowl_motionEnded(motion, with: event)
-        guard motion == .motionShake else { return }
         ProwlShakeMonitor.postShakeDetected()
     }
 }

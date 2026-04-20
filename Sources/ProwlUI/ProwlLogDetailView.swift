@@ -3,7 +3,7 @@
 //  Prowl
 //
 //  Created by Elmee on 16/04/26.
-//  Copyright © 2025 Elmee. All rights reserved.
+//  Copyright © 2026 Elmee. All rights reserved.
 //
 
 import ProwlCore
@@ -45,14 +45,38 @@ public struct ProwlLogDetailView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Picker("Section", selection: $selectedTab) {
-                ForEach(Tab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Tab.allCases) { tab in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                        } label: {
+                            Text(tab.rawValue)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(selectedTab == tab ? .white : .primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 9)
+                                .background(
+                                    Group {
+                                        if selectedTab == tab {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(Color.accentColor)
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(platformSecondaryBackground)
+                                        }
+                                    }
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .padding(.horizontal, segmentedPickerHorizontalPadding)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, segmentedPickerHorizontalPadding)
-            .padding(.vertical, 8)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
 
             Divider()
 
@@ -64,6 +88,21 @@ public struct ProwlLogDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        guard abs(horizontal) > abs(vertical), abs(horizontal) > 50 else { return }
+                        moveTab(isSwipeLeft: horizontal < 0)
+                    }
+            )
+
+            footerCreditView
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+                .frame(maxWidth: .infinity)
         }
         .background(platformBackground)
         .navigationTitle("Details")
@@ -442,6 +481,37 @@ public struct ProwlLogDetailView: View {
         #else
             return 16
         #endif
+    }
+
+    private func moveTab(isSwipeLeft: Bool) {
+        let allTabs = Tab.allCases
+        guard let currentIndex = allTabs.firstIndex(of: selectedTab) else { return }
+
+        let nextIndex: Int
+        if isSwipeLeft {
+            nextIndex = min(currentIndex + 1, allTabs.count - 1)
+        } else {
+            nextIndex = max(currentIndex - 1, 0)
+        }
+
+        guard nextIndex != currentIndex else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedTab = allTabs[nextIndex]
+        }
+    }
+
+    @ViewBuilder
+    private var footerCreditView: some View {
+        HStack(spacing: 4) {
+            Text("Copyright © 2026 Elmee")
+                .foregroundColor(.secondary)
+            if let siteURL = URL(string: "https://elmee.my") {
+                Link("elmee.my", destination: siteURL)
+                    .foregroundColor(.accentColor)
+            }
+        }
+        .font(.caption2)
+        .lineLimit(1)
     }
 
     private func copyToPasteboard(_ string: String) {

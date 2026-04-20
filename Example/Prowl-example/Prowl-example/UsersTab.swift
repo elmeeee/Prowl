@@ -3,7 +3,7 @@
 //  ProwlExample
 //
 //  Created by Elmee on 16/04/26.
-//  Copyright © 2025 Elmee. All rights reserved.
+//  Copyright © 2026 Elmee. All rights reserved.
 //
 
 import SwiftUI

@@ -84,39 +84,6 @@ public final class ProwlLogDetailViewModel: ObservableObject {
     }
 
     private func buildJSONShare() -> String? {
-        var dict: [String: Any] = [
-            "id": log.id.uuidString,
-            "url": log.url?.absoluteString ?? "",
-            "method": log.method,
-            "startedAt": DateFormatter.prowlTimestamp.string(from: log.startedAt),
-            "duration": log.duration,
-            "requestHeaders": log.requestHeaders,
-            "responseHeaders": log.responseHeaders,
-        ]
-
-        if let code = log.statusCode { dict["statusCode"] = code } else { dict["error"] = log.errorDescription ?? "" }
-
-        if let req = log.requestBody {
-            dict["requestBody"] = (try? JSONSerialization.jsonObject(with: req.data))
-                ?? (String(data: req.data, encoding: .utf8) ?? "")
-        }
-
-        if let res = log.responseBody {
-            dict["responseBody"] = (try? JSONSerialization.jsonObject(with: res.data))
-                ?? (String(data: res.data, encoding: .utf8) ?? "")
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
-              let string = String(data: data, encoding: .utf8) else { return nil }
-        return string
+        ProwlLogFormatter.shareText(log: log)
     }
-}
-
-private extension DateFormatter {
-    static let prowlTimestamp: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .medium
-        return f
-    }()
 }

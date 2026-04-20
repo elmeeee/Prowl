@@ -141,6 +141,8 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
                 statusCode: (response as? HTTPURLResponse)?.statusCode,
                 startedAt: startedAt,
                 duration: duration,
+                timeoutInterval: request.timeoutInterval,
+                cachePolicy: Self.cachePolicyName(request.cachePolicy),
                 errorDescription: error?.localizedDescription
             )
             
@@ -181,5 +183,24 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         mutableRequest.httpBody = captured
         mutableRequest.httpBodyStream = nil
         return captured
+    }
+
+    private static func cachePolicyName(_ policy: URLRequest.CachePolicy) -> String {
+        switch policy {
+        case .useProtocolCachePolicy:
+            return "UseProtocolCachePolicy"
+        case .reloadIgnoringLocalCacheData:
+            return "ReloadIgnoringLocalCacheData"
+        case .reloadIgnoringLocalAndRemoteCacheData:
+            return "ReloadIgnoringLocalAndRemoteCacheData"
+        case .returnCacheDataElseLoad:
+            return "ReturnCacheDataElseLoad"
+        case .returnCacheDataDontLoad:
+            return "ReturnCacheDataDontLoad"
+        case .reloadRevalidatingCacheData:
+            return "ReloadRevalidatingCacheData"
+        @unknown default:
+            return String(describing: policy)
+        }
     }
 }

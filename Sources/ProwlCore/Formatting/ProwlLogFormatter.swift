@@ -56,6 +56,64 @@ public enum ProwlLogFormatter {
         return body.data.base64EncodedString()
     }
 
+    public static func shareText(log: NetworkLog) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+
+        let requestBodyText: String
+        if let body = log.requestBody, !body.data.isEmpty {
+            requestBodyText = prettyBodyText(from: body)
+        } else {
+            requestBodyText = "Request body is empty"
+        }
+
+        let responseBodyText: String
+        if let body = log.responseBody, !body.data.isEmpty {
+            if body.data.count > 2_000 {
+                responseBodyText = "Too long to show. If you want to see it, please tap the following button"
+            } else {
+                responseBodyText = prettyBodyText(from: body)
+            }
+        } else {
+            responseBodyText = "Response body is empty"
+        }
+
+        var chunks: [String] = []
+        chunks.append("** INFO **")
+        chunks.append("[URL] \n\(log.url?.absoluteString ?? "-")")
+        chunks.append("[Method] \n\(log.method)")
+        chunks.append("[Status] \n\(log.statusCode.map(String.init) ?? "N/A")")
+        chunks.append("[Request date] \n\(dateFormatter.string(from: log.startedAt))")
+        chunks.append("[Response date] \n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))")
+        chunks.append("[Time interval] \n\(String(format: "%.6f", log.duration))")
+        chunks.append("[Timeout] \n\(log.timeoutInterval.map(String.init) ?? "-")")
+        chunks.append("[Cache policy] \n\(log.cachePolicy ?? "-")")
+
+        chunks.append("** REQUEST **")
+        chunks.append("-- Headers --")
+        for key in log.requestHeaders.keys.sorted() {
+            chunks.append("[\(key)] \n\(log.requestHeaders[key] ?? "")")
+        }
+        chunks.append("-- Body --")
+        chunks.append(requestBodyText)
+
+        chunks.append("** RESPONSE **")
+        chunks.append("-- Headers --")
+        for key in log.responseHeaders.keys.sorted() {
+            chunks.append("[\(key)] \n\(log.responseHeaders[key] ?? "")")
+        }
+        chunks.append("-- Body --")
+        chunks.append(responseBodyText)
+        chunks.append("logged via netfox - [https://github.com/elmeeee/netfox]")
+
+        if let responseBody = log.responseBody, !responseBody.data.isEmpty {
+            let rawResponse = String(data: responseBody.data, encoding: .utf8) ?? responseBody.data.base64EncodedString()
+            chunks.append(rawResponse)
+        }
+
+        return chunks.joined(separator: "\n\n")
+    }
+
     private static func isFormURLEncoded(_ contentType: String?) -> Bool {
         guard let contentType else { return false }
         return contentType.lowercased().contains("application/x-www-form-urlencoded")
@@ -93,6 +151,8 @@ public enum ProwlLogFormatter {
             c.append("[Request date]\n\(dateFormatter.string(from: log.startedAt))\n")
             c.append("[Response date]\n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))\n")
             c.append("[Time interval]\n\(String(format: "%.6f", log.duration))\n")
+            c.append("[Timeout]\n\(log.timeoutInterval.map(String.init) ?? "-")\n")
+            c.append("[Cache policy]\n\(log.cachePolicy ?? "-")\n")
             if let error = log.errorDescription { c.append("[Error]\n\(error)\n") }
 
             c.append("** REQUEST **")

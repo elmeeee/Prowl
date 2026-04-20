@@ -22,6 +22,8 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
     public let statusCode: Int?
     public let startedAt: Date
     public let duration: TimeInterval
+    public let timeoutInterval: TimeInterval?
+    public let cachePolicy: String?
     public let errorDescription: String?
 
     public init(
@@ -36,6 +38,8 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
         statusCode: Int? = nil,
         startedAt: Date,
         duration: TimeInterval,
+        timeoutInterval: TimeInterval? = nil,
+        cachePolicy: String? = nil,
         errorDescription: String? = nil
     ) {
         self.id = id
@@ -49,6 +53,8 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
         self.statusCode = statusCode
         self.startedAt = startedAt
         self.duration = duration
+        self.timeoutInterval = timeoutInterval
+        self.cachePolicy = cachePolicy
         self.errorDescription = errorDescription
     }
 }

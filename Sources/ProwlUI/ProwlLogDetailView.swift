@@ -195,10 +195,60 @@ public struct ProwlLogDetailView: View {
     private var headersView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                metadataSection(title: "Request Metadata", items: requestMetadataItems)
                 headerSection(title: "Request Headers", headers: log.requestHeaders)
                 headerSection(title: "Response Headers", headers: log.responseHeaders)
             }
             .padding()
+        }
+    }
+
+    private var requestMetadataItems: [(String, String)] {
+        [
+            ("URL", log.url?.absoluteString ?? "-"),
+            ("Method", log.method),
+            ("Status", log.statusCode.map(String.init) ?? "N/A"),
+            ("Timeout", log.timeoutInterval.map(String.init) ?? "-"),
+            ("Cache Policy", log.cachePolicy ?? "-"),
+            ("Request Date", Self.timestampFormatter.string(from: log.startedAt)),
+            ("Response Date", Self.timestampFormatter.string(from: log.startedAt.addingTimeInterval(log.duration))),
+            ("Duration", String(format: "%.6f s", log.duration)),
+            ("Request ID", log.requestID.uuidString)
+        ]
+    }
+
+    private func metadataSection(title: String, items: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title).font(.headline)
+                Spacer()
+                Button("Copy") {
+                    let text = items.map { "\($0.0): \($0.1)" }.joined(separator: "\n")
+                    copyToPasteboard(text)
+                }
+                .font(.caption.bold())
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color.blue.opacity(0.1), in: Capsule())
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(item.0)
+                            .font(.caption.weight(.bold))
+                            .frame(width: 120, alignment: .leading)
+                        Text(item.1)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(index % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
+                }
+            }
+            .background(platformSecondaryBackground)
+            .cornerRadius(8)
         }
     }
 

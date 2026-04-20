@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  unit-tests:
+    name: Unit Tests (macOS)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Swift tests
+        run: swift test
+
+  ios-compatibility-build:
+    name: iOS Build (target ${{ matrix.ios_deployment_target }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        ios_deployment_target: ["15.0", "17.0", "18.0", "26.0"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build package for iOS compatibility target
+        run: |
+          xcodebuild \
+            -scheme Prowl-Package \
+            -destination "generic/platform=iOS Simulator" \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=${{ matrix.ios_deployment_target }} \
+            build

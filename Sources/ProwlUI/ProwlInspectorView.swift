@@ -61,7 +61,7 @@ public struct ProwlInspectorView: View {
 
     private var dashboardList: some View {
         List(selection: $selectedLogID) {
-            requestBodyCaptureModeRow
+            inspectorStatusRow
 
             ForEach(viewModel.filteredLogs) { log in
                 #if os(macOS) || os(visionOS)
@@ -100,7 +100,7 @@ public struct ProwlInspectorView: View {
         #endif
     }
 
-    private var requestBodyCaptureModeRow: some View {
+    private var inspectorStatusRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Inspector Status")
                 .font(.caption2.weight(.semibold))
@@ -142,7 +142,6 @@ public struct ProwlInspectorView: View {
     private var statusChipsRow: some View {
         HStack(spacing: 8) {
             statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
-            statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
             statusChip(
                 title: "Sensitive",
                 value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
@@ -155,7 +154,6 @@ public struct ProwlInspectorView: View {
     private var statusChipsStack: some View {
         VStack(alignment: .leading, spacing: 6) {
             statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
-            statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
             statusChip(
                 title: "Sensitive",
                 value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
@@ -297,21 +295,4 @@ public struct ProwlInspectorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var requestBodyCaptureModeTitle: String {
-        switch ProwlRuntime.requestBodyCaptureMode {
-        case .safeBestEffort:
-            return "Safe"
-        case .aggressiveStreamReplay:
-            return "Aggressive"
-        }
-    }
-
-    private var requestBodyCaptureModeColor: Color {
-        switch ProwlRuntime.requestBodyCaptureMode {
-        case .safeBestEffort:
-            return .green
-        case .aggressiveStreamReplay:
-            return .orange
-        }
-    }
 }

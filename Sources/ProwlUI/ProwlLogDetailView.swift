@@ -39,6 +39,8 @@ public struct ProwlLogDetailView: View {
     @State private var isMockEditorPresented = false
     @State private var copyToastMessage: String?
     @State private var copyToastToken = UUID()
+    @State private var isShowingFullRequestBody = false
+    @State private var isShowingFullResponseBody = false
 
     public init(log: NetworkLog) {
         self.log = log
@@ -203,6 +205,35 @@ public struct ProwlLogDetailView: View {
                     }
                 }
             }
+
+            fixedHeightSectionCard(title: "Payload") {
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledValue(
+                        "Request Type",
+                        value: log.requestBody?.contentType ?? "-",
+                        toastMessage: "Request type copied"
+                    )
+                    labeledValue(
+                        "Response Type",
+                        value: log.responseBody?.contentType ?? "-",
+                        toastMessage: "Response type copied"
+                    )
+                    labeledValue(
+                        "Request Size",
+                        value: byteSizeText(log.requestBody?.data.count ?? 0),
+                        toastMessage: "Request size copied"
+                    )
+                    labeledValue(
+                        "Response Size",
+                        value: byteSizeText(log.responseBody?.data.count ?? 0),
+                        toastMessage: "Response size copied"
+                    )
+                }
+            }
+
+            fixedHeightSectionCard(title: "URL Query Strings") {
+                queryItemList(log.url)
+            }
         }
     }
 
@@ -212,14 +243,16 @@ public struct ProwlLogDetailView: View {
                 copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
             fixedHeightSectionCard(title: "Headers") {
-                headerList(log.requestHeaders)
+                headerList(log.requestHeaders, emptyText: "Request headers are empty")
             }
             fixedHeightSectionCard(title: "Body") {
                 bodyView(
                     log.requestBody,
                     emptyText: "Request body is empty",
                     applyJSONHighlighting: true,
-                    toastMessage: "Request body copied"
+                    toastMessage: "Request body copied",
+                    isShowingFullBody: $isShowingFullRequestBody,
+                    fullBodyButtonTitle: "Show request body"
                 )
             }
         }
@@ -231,14 +264,16 @@ public struct ProwlLogDetailView: View {
                 copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
             }
             fixedHeightSectionCard(title: "Headers") {
-                headerList(log.responseHeaders)
+                headerList(log.responseHeaders, emptyText: "Response headers are empty")
             }
             fixedHeightSectionCard(title: "Body") {
                 bodyView(
                     log.responseBody,
                     emptyText: "Response body is empty",
                     applyJSONHighlighting: true,
-                    toastMessage: "Response body copied"
+                    toastMessage: "Response body copied",
+                    isShowingFullBody: $isShowingFullResponseBody,
+                    fullBodyButtonTitle: "Show response body"
                 )
             }
         }
@@ -347,9 +382,9 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func headerList(_ headers: [String: String]) -> some View {
+    private func headerList(_ headers: [String: String], emptyText: String) -> some View {
         if headers.isEmpty {
-            Text("No headers")
+            Text(emptyText)
                 .font(.system(size: Self.contentFontSize))
                 .foregroundColor(.secondary)
         } else {
@@ -387,9 +422,14 @@ public struct ProwlLogDetailView: View {
         _ body: NetworkLog.Body?,
         emptyText: String,
         applyJSONHighlighting: Bool = false,
-        toastMessage: String = "Body copied"
+        toastMessage: String = "Body copied",
+        isShowingFullBody: Binding<Bool> = .constant(true),
+        fullBodyButtonTitle: String? = nil
     ) -> some View {
         let text = bodyText(body, emptyText: emptyText)
+        let hasBody = body != nil && text != emptyText
+        let isTooLong = text.count > 1024
+        let shouldShowPreviewMessage = hasBody && isTooLong && !isShowingFullBody.wrappedValue
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Spacer()
@@ -403,30 +443,105 @@ public struct ProwlLogDetailView: View {
                 .accessibilityLabel("Copy body")
                 .accessibilityHint("Copies body content to clipboard")
             }
-            if applyJSONHighlighting, let body {
-                let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
-                Text(highlighted)
-                    .font(.system(size: Self.contentFontSize, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(platformBodyBackground)
-                    )
+            if shouldShowPreviewMessage {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Too long to show. If you want to see it, please tap the following button")
+                        .font(.system(size: Self.contentFontSize))
+                        .foregroundColor(.secondary)
+
+                    if let fullBodyButtonTitle {
+                        Button(fullBodyButtonTitle) {
+                            isShowingFullBody.wrappedValue = true
+                        }
+                        .font(.system(size: Self.contentFontSize, weight: .bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1), in: Capsule())
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(platformBodyBackground)
+                )
             } else {
-                Text(text)
-                    .font(.system(size: Self.contentFontSize, design: .monospaced))
-                    .foregroundColor(.primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(platformBodyBackground)
-                    )
+                if applyJSONHighlighting, let body {
+                    let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
+                    Text(highlighted)
+                        .font(.system(size: Self.contentFontSize, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(platformBodyBackground)
+                        )
+                } else {
+                    Text(text)
+                        .font(.system(size: Self.contentFontSize, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(platformBodyBackground)
+                        )
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func queryItemList(_ url: URL?) -> some View {
+        if let url,
+           let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            let queryItems = components.queryItems ?? []
+            if queryItems.isEmpty {
+                Text("No query parameters")
+                    .font(.system(size: Self.contentFontSize))
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(queryItems.enumerated()), id: \.offset) { _, queryItem in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 8) {
+                                Text(queryItem.name)
+                                    .font(.system(size: Self.contentFontSize, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                Spacer(minLength: 0)
+                                Button("Copy") {
+                                    copyToPasteboard(
+                                        "\(queryItem.name)=\(queryItem.value ?? "")",
+                                        toastMessage: "\(queryItem.name) query copied"
+                                    )
+                                }
+                                .font(.system(size: Self.contentFontSize, weight: .bold))
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(Color.blue.opacity(0.1), in: Capsule())
+                            }
+                            Text(queryItem.value ?? "")
+                                .font(.system(size: Self.contentFontSize))
+                                .foregroundColor(.primary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+        } else {
+            Text("No query parameters")
+                .font(.system(size: Self.contentFontSize))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private func byteSizeText(_ bytes: Int) -> String {
+        if bytes == 0 { return "0 B" }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .binary
+        return formatter.string(fromByteCount: Int64(bytes))
     }
 
     private func bodyText(_ body: NetworkLog.Body?, emptyText: String) -> String {

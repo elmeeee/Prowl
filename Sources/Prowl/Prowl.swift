@@ -39,12 +39,6 @@ public enum Prowl {
         set { ProwlRuntime.customSessionDelegate = newValue }
     }
 
-    /// Controls how request bodies backed by `httpBodyStream` are captured for logs.
-    public static var requestBodyCaptureMode: ProwlRequestBodyCaptureMode {
-        get { ProwlRuntime.requestBodyCaptureMode }
-        set { ProwlRuntime.requestBodyCaptureMode = newValue }
-    }
-
     /// Enables/disables request logging without stopping the inspector UI.
     public static var isLoggingEnabled: Bool {
         get { ProwlRuntime.isLoggingEnabled }
@@ -137,7 +131,6 @@ public enum Prowl {
     public static func configure(
         storage: ProwlStorage? = nil,
         masker: SensitiveDataMasker? = nil,
-        requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil,
         isLoggingEnabled: Bool? = nil,
         isSensitiveDataMaskingEnabled: Bool? = nil
     ) {
@@ -145,7 +138,6 @@ public enum Prowl {
             await ProwlRuntime.shared.configure(
                 storage: storage,
                 masker: masker,
-                requestBodyCaptureMode: requestBodyCaptureMode,
                 isLoggingEnabled: isLoggingEnabled,
                 isSensitiveDataMaskingEnabled: isSensitiveDataMaskingEnabled
             )

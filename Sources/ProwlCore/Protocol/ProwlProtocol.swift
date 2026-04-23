@@ -40,11 +40,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutableRequest)
         URLProtocol.setProperty(UUID().uuidString, forKey: Self.requestIDKey, in: mutableRequest)
 
-        let requestBodyData = Self.captureRequestBody(
-            from: request,
-            mutableRequest: mutableRequest,
-            mode: ProwlRuntime.requestBodyCaptureMode
-        )
+        let requestBodyData = Self.captureRequestBodyPreflight(from: request)
 
         let proxiedRequest = mutableRequest as URLRequest
         let startedAt = Date()
@@ -131,12 +127,13 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         let timeoutInterval = request.timeoutInterval
         let cachePolicy = Self.cachePolicyName(request.cachePolicy)
         let errorDescription = error?.localizedDescription
+        let maskingEnabled = ProwlRuntime.isSensitiveDataMaskingEnabled
+        let requestBodyDataToLog = requestBodyData
+            ?? Self.captureRequestBodyPostflight(from: request)
 
         Task {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
-            let maskingEnabled = ProwlRuntime.isSensitiveDataMaskingEnabled
-            let requestBodyDataToLog = requestBodyData ?? request.httpBody
 
             let requestHeaders = maskingEnabled
                 ? snapshot.masker.mask(headers: requestHeaders)
@@ -190,11 +187,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         return readAllBytes(from: copiedStream)
     }
 
-    private static func captureRequestBody(
-        from request: URLRequest,
-        mutableRequest: NSMutableURLRequest,
-        mode: ProwlRequestBodyCaptureMode
-    ) -> Data? {
+    private static func captureRequestBodyPreflight(from request: URLRequest) -> Data? {
         if let bestEffort = captureRequestBodyBestEffort(from: request) {
             return bestEffort
         }
@@ -203,31 +196,23 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             return snapshotBody
         }
 
-        guard mode == .aggressiveStreamReplay else {
-            return nil
-        }
-        guard ProwlRequestReplaySafety.isAggressiveReplaySafe(for: request) else {
-            return nil
-        }
-
-        return replayBodyStreamFromOriginalRequest(into: mutableRequest)
+        return nil
     }
 
-    private static func replayBodyStreamFromOriginalRequest(into mutableRequest: NSMutableURLRequest) -> Data? {
-        guard let originalStream = mutableRequest.httpBodyStream else {
-            return nil
+    private static func captureRequestBodyPostflight(from request: URLRequest) -> Data? {
+        if let stream = request.httpBodyStream,
+           let streamBody = readAllBytes(from: stream),
+           !streamBody.isEmpty {
+            return streamBody
         }
-        guard let captured = readAllBytes(from: originalStream), !captured.isEmpty else {
-            return nil
+        if let snapshotBody = ProwlRequestBodySnapshot.body(from: request), !snapshotBody.isEmpty {
+            return snapshotBody
         }
 
-        // Rebuild outbound payload from captured bytes after consuming original stream.
-        // Keep framing headers consistent with the new body representation.
-        mutableRequest.httpBody = captured
-        mutableRequest.httpBodyStream = nil
-        mutableRequest.setValue(String(captured.count), forHTTPHeaderField: "Content-Length")
-        mutableRequest.setValue(nil, forHTTPHeaderField: "Transfer-Encoding")
-        return captured
+        if let body = request.httpBody, !body.isEmpty {
+            return body
+        }
+        return nil
     }
 
     private static func readAllBytes(from stream: InputStream) -> Data? {

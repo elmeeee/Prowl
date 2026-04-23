@@ -179,9 +179,7 @@ request.httpBodyStream = InputStream(data: payload)
 request.attachProwlBodySnapshot(payload) // safe logging snapshot
 ```
 
-If you cannot attach snapshots from the request builder, you can temporarily use aggressive capture mode from the inspector settings, but safe snapshot attachment is recommended for maximum API compatibility.
-
-When aggressive capture is enabled, Prowl automatically avoids replay for high-risk requests (for example chunked transfer, multipart form data, or `Expect: 100-continue`) to reduce transport-side failures.
+Prowl follows a netfox capture path for stream-backed requests and falls back to attached snapshots when available.
 
 ### URLSession Integration (Automatic + Helpers)
 

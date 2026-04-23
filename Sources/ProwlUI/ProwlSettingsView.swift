@@ -20,7 +20,6 @@ public struct ProwlSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
     @State private var isLoggingEnabled = true
-    @State private var aggressiveRequestBodyCapture = false
     @State private var isSensitiveDataMaskingEnabled = false
     
     public init(
@@ -32,9 +31,6 @@ public struct ProwlSettingsView: View {
         self.onExportText = onExportText
         self.onExportCURL = onExportCURL
         _isLoggingEnabled = State(initialValue: ProwlRuntime.isLoggingEnabled)
-        _aggressiveRequestBodyCapture = State(
-            initialValue: ProwlRuntime.requestBodyCaptureMode == .aggressiveStreamReplay
-        )
         _isSensitiveDataMaskingEnabled = State(initialValue: ProwlRuntime.isSensitiveDataMaskingEnabled)
     }
 
@@ -47,9 +43,6 @@ public struct ProwlSettingsView: View {
             #endif
         }
         .navigationTitle("Settings")
-        .onChange(of: aggressiveRequestBodyCapture) { isEnabled in
-            ProwlRuntime.requestBodyCaptureMode = isEnabled ? .aggressiveStreamReplay : .safeBestEffort
-        }
         .onChange(of: isLoggingEnabled) { isEnabled in
             ProwlRuntime.isLoggingEnabled = isEnabled
         }
@@ -100,7 +93,6 @@ public struct ProwlSettingsView: View {
 
             loggingSection
             sensitiveDataSection
-            requestBodyCaptureSection
 
             Section(header: Text("Export & Share")) {
                 exportJSONButton
@@ -161,15 +153,6 @@ public struct ProwlSettingsView: View {
                         .labelsHidden()
                         .pickerStyle(.segmented)
                         .frame(width: 230)
-                    }
-                }
-
-                macSection("Request Body Capture") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Aggressive stream body capture", isOn: $aggressiveRequestBodyCapture)
-                        Text("Default OFF (safe). Turn ON only when you need payload from stream-based requests. Safe mode is recommended to avoid request compatibility issues.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -250,15 +233,6 @@ public struct ProwlSettingsView: View {
         let successCount = viewModel.logs.filter { ($0.statusCode ?? 0) >= 200 && ($0.statusCode ?? 0) < 300 }.count
         let percentage = (Double(successCount) / Double(total)) * 100
         return String(format: "%.1f%%", percentage)
-    }
-
-    private var requestBodyCaptureSection: some View {
-        Section(header: Text("Request Body Capture")) {
-            Toggle("Aggressive stream body capture", isOn: $aggressiveRequestBodyCapture)
-            Text("Default OFF (safe). Turn ON only when you need payload from stream-based requests. Safe mode is recommended to avoid request compatibility issues.")
-                .font(.footnote)
-                .foregroundColor(.secondary)
-        }
     }
 
     private var loggingSection: some View {

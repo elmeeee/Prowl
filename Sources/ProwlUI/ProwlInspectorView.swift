@@ -101,42 +101,51 @@ public struct ProwlInspectorView: View {
     }
 
     private var requestBodyCaptureModeRow: some View {
-        HStack(spacing: 10) {
-            Text("Logging")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Inspector Status")
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(.secondary)
-            Text(ProwlRuntime.isLoggingEnabled ? "On" : "Off")
-                .font(.caption2.weight(.bold))
-                .foregroundColor(ProwlRuntime.isLoggingEnabled ? .green : .red)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background((ProwlRuntime.isLoggingEnabled ? Color.green : Color.red).opacity(0.15), in: Capsule())
 
-            Text("Body Capture")
-                .font(.caption2.weight(.semibold))
-                .foregroundColor(.secondary)
-            Text(requestBodyCaptureModeTitle)
-                .font(.caption2.weight(.bold))
-                .foregroundColor(requestBodyCaptureModeColor)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(requestBodyCaptureModeColor.opacity(0.15), in: Capsule())
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
+                    statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
+                    statusChip(
+                        title: "Sensitive",
+                        value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
+                        color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
+                    )
+                    Spacer(minLength: 0)
+                }
 
-            Text("Sensitive Data")
-                .font(.caption2.weight(.semibold))
-                .foregroundColor(.secondary)
-            Text(ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw")
-                .font(.caption2.weight(.bold))
-                .foregroundColor(ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    (ProwlRuntime.isSensitiveDataMaskingEnabled ? Color.green : Color.orange).opacity(0.15),
-                    in: Capsule()
-                )
-            Spacer()
+                VStack(alignment: .leading, spacing: 6) {
+                    statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
+                    statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
+                    statusChip(
+                        title: "Sensitive",
+                        value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
+                        color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
+                    )
+                }
+            }
         }
+        .padding(.vertical, 4)
         .listRowBackground(Color.clear)
+    }
+
+    private func statusChip(title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.caption2.weight(.bold))
+                .foregroundColor(color)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(color.opacity(0.15), in: Capsule())
+        }
+        .padding(.vertical, 2)
     }
 
     #if os(macOS) || os(visionOS)

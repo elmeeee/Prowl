@@ -28,4 +28,30 @@ public extension URLRequest {
         copy.attachProwlBodySnapshot(body)
         return copy
     }
+
+    /// Configures a stream-backed body while preserving a safe logging snapshot.
+    /// This keeps transport behavior stream-based and does not consume the stream.
+    mutating func setProwlHTTPBodyStream(_ body: Data) {
+        httpBody = nil
+        httpBodyStream = InputStream(data: body)
+        attachProwlBodySnapshot(body)
+    }
+
+    /// Returns a request copy configured with stream body + Prowl snapshot.
+    func withProwlHTTPBodyStream(_ body: Data) -> URLRequest {
+        var copy = self
+        copy.setProwlHTTPBodyStream(body)
+        return copy
+    }
+
+    /// Attaches JSON-encoded snapshot to support non-intrusive request body logging.
+    @discardableResult
+    mutating func attachProwlJSONBodySnapshot<T: Encodable>(
+        _ value: T,
+        encoder: JSONEncoder = JSONEncoder()
+    ) throws -> Data {
+        let data = try encoder.encode(value)
+        attachProwlBodySnapshot(data)
+        return data
+    }
 }

@@ -148,24 +148,58 @@ public struct ProwlLogDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             fixedHeightSectionCard(title: "Endpoint") {
                 VStack(alignment: .leading, spacing: 8) {
-                    labeledValue("URL", value: log.url?.absoluteString ?? "-")
+                    labeledValue(
+                        "URL",
+                        value: log.url?.absoluteString ?? "-",
+                        toastMessage: "URL copied"
+                    )
                     Divider()
                     HStack(spacing: 10) {
-                        capsuleTag(text: log.method.uppercased(), color: .blue)
-                        capsuleTag(text: "Status \(log.statusCode.map { String($0) } ?? "N/A")", color: statusColor(log.statusCode))
+                        capsuleTag(
+                            text: log.method.uppercased(),
+                            color: .blue,
+                            copyValue: log.method.uppercased(),
+                            toastMessage: "Method copied"
+                        )
+                        capsuleTag(
+                            text: "Status \(log.statusCode.map { String($0) } ?? "N/A")",
+                            color: statusColor(log.statusCode),
+                            copyValue: log.statusCode.map { String($0) } ?? "N/A",
+                            toastMessage: "Status code copied"
+                        )
                     }
                 }
             }
 
             fixedHeightSectionCard(title: "Timing") {
                 VStack(alignment: .leading, spacing: 10) {
-                    labeledValue("Request Time", value: Self.detailDateFormatter.string(from: log.startedAt))
-                    labeledValue("Response Time", value: Self.detailDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))
-                    labeledValue("Duration", value: String(format: "%.8f s", log.duration))
-                    labeledValue("Timeout", value: log.timeoutInterval.map { String($0) } ?? "-")
-                    labeledValue("Cache Policy", value: log.cachePolicy ?? "-")
+                    labeledValue(
+                        "Request Time",
+                        value: Self.detailDateFormatter.string(from: log.startedAt),
+                        toastMessage: "Request time copied"
+                    )
+                    labeledValue(
+                        "Response Time",
+                        value: Self.detailDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)),
+                        toastMessage: "Response time copied"
+                    )
+                    labeledValue(
+                        "Duration",
+                        value: String(format: "%.8f s", log.duration),
+                        toastMessage: "Duration copied"
+                    )
+                    labeledValue(
+                        "Timeout",
+                        value: log.timeoutInterval.map { String($0) } ?? "-",
+                        toastMessage: "Timeout copied"
+                    )
+                    labeledValue(
+                        "Cache Policy",
+                        value: log.cachePolicy ?? "-",
+                        toastMessage: "Cache policy copied"
+                    )
                     if let error = log.errorDescription, !error.isEmpty {
-                        labeledValue("Error", value: error)
+                        labeledValue("Error", value: error, toastMessage: "Error copied")
                     }
                 }
             }
@@ -180,25 +214,12 @@ public struct ProwlLogDetailView: View {
             fixedHeightSectionCard(title: "Headers") {
                 headerList(log.requestHeaders)
             }
-            fixedHeightSectionCard(
-                title: "Body",
-                trailing: {
-                    Button("Copy") {
-                        copyToPasteboard(
-                            bodyText(log.requestBody, emptyText: "Request body is empty"),
-                            toastMessage: "Request body copied"
-                        )
-                    }
-                    .font(.system(size: Self.contentFontSize, weight: .bold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Color.blue.opacity(0.1), in: Capsule())
-                }
-            ) {
+            fixedHeightSectionCard(title: "Body") {
                 bodyView(
                     log.requestBody,
                     emptyText: "Request body is empty",
-                    applyJSONHighlighting: true
+                    applyJSONHighlighting: true,
+                    toastMessage: "Request body copied"
                 )
             }
         }
@@ -216,7 +237,8 @@ public struct ProwlLogDetailView: View {
                 bodyView(
                     log.responseBody,
                     emptyText: "Response body is empty",
-                    applyJSONHighlighting: true
+                    applyJSONHighlighting: true,
+                    toastMessage: "Response body copied"
                 )
             }
         }
@@ -278,11 +300,23 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func labeledValue(_ label: String, value: String) -> some View {
+    private func labeledValue(_ label: String, value: String, toastMessage: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.system(size: Self.contentFontSize, weight: .semibold))
-                .foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Text(label)
+                    .font(.system(size: Self.contentFontSize, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer(minLength: 0)
+                Button("Copy") {
+                    copyToPasteboard(value, toastMessage: toastMessage ?? "\(label) copied")
+                }
+                .font(.system(size: Self.contentFontSize, weight: .bold))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Color.blue.opacity(0.1), in: Capsule())
+                .accessibilityLabel("Copy \(label)")
+                .accessibilityHint("Copies \(label.lowercased()) value to clipboard")
+            }
             Text(value)
                 .font(.system(size: Self.contentFontSize))
                 .foregroundColor(.primary)
@@ -291,13 +325,25 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func capsuleTag(text: String, color: Color) -> some View {
-        Text(text)
-            .font(.system(size: Self.contentFontSize, weight: .bold, design: .monospaced))
-            .foregroundColor(color)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(color.opacity(0.15), in: Capsule())
+    private func capsuleTag(
+        text: String,
+        color: Color,
+        copyValue: String? = nil,
+        toastMessage: String? = nil
+    ) -> some View {
+        Button {
+            guard let copyValue else { return }
+            copyToPasteboard(copyValue, toastMessage: toastMessage ?? "\(text) copied")
+        } label: {
+            Text(text)
+                .font(.system(size: Self.contentFontSize, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(color.opacity(0.15), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(copyValue == nil)
     }
 
     @ViewBuilder
@@ -310,9 +356,22 @@ public struct ProwlLogDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(headers.keys.sorted(), id: \.self) { key in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(key)
-                            .font(.system(size: Self.contentFontSize, weight: .semibold))
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Text(key)
+                                .font(.system(size: Self.contentFontSize, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            Spacer(minLength: 0)
+                            Button("Copy") {
+                                let headerValue = headers[key] ?? ""
+                                copyToPasteboard("\(key): \(headerValue)", toastMessage: "\(key) header copied")
+                            }
+                            .font(.system(size: Self.contentFontSize, weight: .bold))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color.blue.opacity(0.1), in: Capsule())
+                            .accessibilityLabel("Copy \(key) header")
+                            .accessibilityHint("Copies \(key) header to clipboard")
+                        }
                         Text(headers[key] ?? "")
                             .font(.system(size: Self.contentFontSize))
                             .foregroundColor(.primary)
@@ -327,31 +386,46 @@ public struct ProwlLogDetailView: View {
     private func bodyView(
         _ body: NetworkLog.Body?,
         emptyText: String,
-        applyJSONHighlighting: Bool = false
+        applyJSONHighlighting: Bool = false,
+        toastMessage: String = "Body copied"
     ) -> some View {
         let text = bodyText(body, emptyText: emptyText)
-        if applyJSONHighlighting, let body {
-            let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
-            Text(highlighted)
-                .font(.system(size: Self.contentFontSize, design: .monospaced))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(platformBodyBackground)
-                )
-        } else {
-            Text(text)
-                .font(.system(size: Self.contentFontSize, design: .monospaced))
-                .foregroundColor(.primary)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(platformBodyBackground)
-                )
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Spacer()
+                Button("Copy") {
+                    copyToPasteboard(text, toastMessage: toastMessage)
+                }
+                .font(.system(size: Self.contentFontSize, weight: .bold))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Color.blue.opacity(0.1), in: Capsule())
+                .accessibilityLabel("Copy body")
+                .accessibilityHint("Copies body content to clipboard")
+            }
+            if applyJSONHighlighting, let body {
+                let highlighted = ProwlJSONSyntaxHighlighter.highlight(text, contentType: body.contentType)
+                Text(highlighted)
+                    .font(.system(size: Self.contentFontSize, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(platformBodyBackground)
+                    )
+            } else {
+                Text(text)
+                    .font(.system(size: Self.contentFontSize, design: .monospaced))
+                    .foregroundColor(.primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(platformBodyBackground)
+                    )
+            }
         }
     }
 

@@ -19,7 +19,7 @@ Prowl is a lightweight, high-performance network debugging library for the Apple
 - Runtime logging toggle (pause/resume interception)
 - Thread-safe log storage via `actor`
 - FIFO log buffer (default `200`)
-- Opt-in sensitive data masking (e.g. `Authorization`, `password`)
+- Built-in sensitive data masking (toggleable at runtime)
 - SwiftUI inspector dashboard + detail tabs
 - Real-time search and status filtering
 - URL ignore rules via substring and regex pattern
@@ -151,6 +151,19 @@ Prowl.configure(storage: storage, masker: masker)
 Prowl.start()
 ```
 
+### Sensitive Data Masking Toggle
+
+Prowl can mask common secrets (for example `Authorization` bearer tokens, cookies, private keys, and common token/password JSON keys). Default is OFF.
+
+You can toggle this at runtime:
+
+```swift
+import Prowl
+
+Prowl.isSensitiveDataMaskingEnabled = false // default (show raw values)
+Prowl.isSensitiveDataMaskingEnabled = true  // redact sensitive values
+```
+
 ## Stream Request Body (Safe Path)
 
 For requests that use `httpBodyStream`, attach a snapshot at request-build time so Prowl can log payload safely without mutating network transport:
@@ -169,6 +182,60 @@ request.attachProwlBodySnapshot(payload) // safe logging snapshot
 If you cannot attach snapshots from the request builder, you can temporarily use aggressive capture mode from the inspector settings, but safe snapshot attachment is recommended for maximum API compatibility.
 
 When aggressive capture is enabled, Prowl automatically avoids replay for high-risk requests (for example chunked transfer, multipart form data, or `Expect: 100-continue`) to reduce transport-side failures.
+
+### URLSession Integration (Automatic + Helpers)
+
+Prowl now installs safe snapshot support at `Prowl.start()` time for:
+
+- `URLSession.uploadTask(with:from:)`
+- `URLSession.uploadTask(with:from:completionHandler:)`
+
+That means payloads passed as `Data` are auto-snapshotted for logs without mutating transport behavior.
+
+For streamed uploads, use helper APIs:
+
+```swift
+import ProwlCore
+
+var request = URLRequest(url: endpoint)
+request.httpMethod = "POST"
+
+let payload = try JSONEncoder().encode(body)
+request.setProwlHTTPBodyStream(payload) // stream + safe snapshot in one call
+
+let task = URLSession.shared.prowlUploadTask(
+    withStreamedRequest: request,
+    bodySnapshot: payload
+)
+task.resume()
+```
+
+### Alamofire Integration
+
+If you use Alamofire, plug in `ProwlAlamofireBodySnapshotInterceptor` so request bodies are snapshotted during adaptation:
+
+```swift
+import Alamofire
+import ProwlCore
+
+let session = Session(
+    configuration: .default,
+    interceptor: ProwlAlamofireBodySnapshotInterceptor()
+)
+```
+
+### Moya Integration
+
+If you use Moya, add `ProwlMoyaBodySnapshotPlugin` to provider plugins:
+
+```swift
+import Moya
+import ProwlCore
+
+let provider = MoyaProvider<MyTarget>(
+    plugins: [ProwlMoyaBodySnapshotPlugin()]
+)
+```
 
 ## Toggle Logging at Runtime
 

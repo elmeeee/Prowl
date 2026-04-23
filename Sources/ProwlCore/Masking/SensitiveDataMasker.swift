@@ -1,13 +1,38 @@
 import Foundation
 
 public struct SensitiveDataMasker: Sendable {
+    private static let defaultSensitiveHeaders: Set<String> = [
+        "authorization",
+        "proxy-authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "x-auth-token"
+    ]
+
+    private static let defaultSensitiveJSONKeys: Set<String> = [
+        "password",
+        "passcode",
+        "token",
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "bearer",
+        "authorization",
+        "cookie",
+        "private_key",
+        "privatekey",
+        "client_secret",
+        "secret"
+    ]
+
     public let sensitiveHeaders: Set<String>
     public let sensitiveJSONKeys: Set<String>
     public let redactionToken: String
 
     public init(
-        sensitiveHeaders: Set<String> = [],
-        sensitiveJSONKeys: Set<String> = [],
+        sensitiveHeaders: Set<String> = Self.defaultSensitiveHeaders,
+        sensitiveJSONKeys: Set<String> = Self.defaultSensitiveJSONKeys,
         redactionToken: String = "[REDACTED]"
     ) {
         self.sensitiveHeaders = Set(sensitiveHeaders.map { $0.lowercased() })
@@ -27,20 +52,27 @@ public struct SensitiveDataMasker: Sendable {
 
     public func mask(body data: Data?, contentType: String?) -> NetworkLog.Body? {
         guard let data else { return nil }
-        guard let contentType, contentType.lowercased().contains("application/json") else {
-            return .init(data: data, contentType: contentType)
+        let normalizedContentType = contentType?.lowercased() ?? ""
+        let shouldMaskJSONKeys = normalizedContentType.contains("application/json")
+
+        let baseData: Data
+        if shouldMaskJSONKeys,
+           let object = try? JSONSerialization.jsonObject(with: data),
+           let maskedObject = mask(json: object),
+           JSONSerialization.isValidJSONObject(maskedObject),
+           let maskedData = try? JSONSerialization.data(withJSONObject: maskedObject, options: [.prettyPrinted, .sortedKeys]) {
+            baseData = maskedData
+        } else {
+            baseData = data
         }
 
-        guard
-            let object = try? JSONSerialization.jsonObject(with: data),
-            let maskedObject = mask(json: object),
-            JSONSerialization.isValidJSONObject(maskedObject),
-            let maskedData = try? JSONSerialization.data(withJSONObject: maskedObject, options: [.prettyPrinted, .sortedKeys])
-        else {
-            return .init(data: data, contentType: contentType)
+        guard let text = String(data: baseData, encoding: .utf8) else {
+            return .init(data: baseData, contentType: contentType)
         }
 
-        return .init(data: maskedData, contentType: contentType)
+        let redactedText = maskSensitiveText(text)
+        let redactedData = Data(redactedText.utf8)
+        return .init(data: redactedData, contentType: contentType)
     }
 
     private func mask(json value: Any) -> Any? {
@@ -67,5 +99,35 @@ public struct SensitiveDataMasker: Sendable {
         default:
             return nil
         }
+    }
+
+    private func maskSensitiveText(_ text: String) -> String {
+        var redacted = text
+
+        redacted = replacingRegex(
+            pattern: "(?im)^(authorization|proxy-authorization|cookie|set-cookie)\\s*:\\s*.*$",
+            in: redacted,
+            template: "$1: \(redactionToken)"
+        )
+        redacted = replacingRegex(
+            pattern: "(?i)\\bbearer\\s+[a-z0-9\\-._~+/]+=*",
+            in: redacted,
+            template: "Bearer \(redactionToken)"
+        )
+        redacted = replacingRegex(
+            pattern: "(?is)-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----.*?-----END(?: [A-Z0-9]+)? PRIVATE KEY-----",
+            in: redacted,
+            template: redactionToken
+        )
+
+        return redacted
+    }
+
+    private func replacingRegex(pattern: String, in text: String, template: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return text
+        }
+        let fullRange = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.stringByReplacingMatches(in: text, options: [], range: fullRange, withTemplate: template)
     }
 }

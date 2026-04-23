@@ -51,6 +51,12 @@ public enum Prowl {
         set { ProwlRuntime.isLoggingEnabled = newValue }
     }
 
+    /// Controls masking of sensitive request/response headers and payload values in logs.
+    public static var isSensitiveDataMaskingEnabled: Bool {
+        get { ProwlRuntime.isSensitiveDataMaskingEnabled }
+        set { ProwlRuntime.isSensitiveDataMaskingEnabled = newValue }
+    }
+
     public static func ignoreURL(_ urlString: String) {
         ProwlRuntime.ignoredURLs.insert(urlString)
     }
@@ -69,6 +75,7 @@ public enum Prowl {
         ignoredURLs.forEach { ignoreURL($0) }
         ignoredURLRegexes.forEach { ignoreURL(regex: $0) }
 
+        ProwlRuntime.installRequestBodySnapshotSupportIfNeeded()
         URLProtocol.registerClass(ProwlProtocol.self)
         #if os(iOS)
             ProwlAutoInspector.enable()
@@ -131,14 +138,16 @@ public enum Prowl {
         storage: ProwlStorage? = nil,
         masker: SensitiveDataMasker? = nil,
         requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil,
-        isLoggingEnabled: Bool? = nil
+        isLoggingEnabled: Bool? = nil,
+        isSensitiveDataMaskingEnabled: Bool? = nil
     ) {
         Task {
             await ProwlRuntime.shared.configure(
                 storage: storage,
                 masker: masker,
                 requestBodyCaptureMode: requestBodyCaptureMode,
-                isLoggingEnabled: isLoggingEnabled
+                isLoggingEnabled: isLoggingEnabled,
+                isSensitiveDataMaskingEnabled: isSensitiveDataMaskingEnabled
             )
         }
     }

@@ -135,22 +135,30 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         Task {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
-            let requestBody = snapshot.masker.mask(
-                body: requestBodyData ?? request.httpBody,
-                contentType: requestContentType
-            )
-            let responseBody = snapshot.masker.mask(
-                body: data,
-                contentType: responseContentType
-            )
+            let maskingEnabled = ProwlRuntime.isSensitiveDataMaskingEnabled
+            let requestBodyDataToLog = requestBodyData ?? request.httpBody
+
+            let requestHeaders = maskingEnabled
+                ? snapshot.masker.mask(headers: requestHeaders)
+                : requestHeaders
+            let responseHeaders = maskingEnabled
+                ? snapshot.masker.mask(headers: responseHeaders)
+                : responseHeaders
+
+            let requestBody = maskingEnabled
+                ? snapshot.masker.mask(body: requestBodyDataToLog, contentType: requestContentType)
+                : requestBodyDataToLog.map { NetworkLog.Body(data: $0, contentType: requestContentType) }
+            let responseBody = maskingEnabled
+                ? snapshot.masker.mask(body: data, contentType: responseContentType)
+                : NetworkLog.Body(data: data, contentType: responseContentType)
 
             let log = NetworkLog(
                 requestID: requestID,
                 url: requestURL,
                 method: requestMethod,
-                requestHeaders: snapshot.masker.mask(headers: requestHeaders),
+                requestHeaders: requestHeaders,
                 requestBody: requestBody,
-                responseHeaders: snapshot.masker.mask(headers: responseHeaders),
+                responseHeaders: responseHeaders,
                 responseBody: responseBody,
                 statusCode: statusCode,
                 startedAt: startedAt,

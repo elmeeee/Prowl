@@ -21,6 +21,7 @@ public struct ProwlSettingsView: View {
     @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
     @State private var isLoggingEnabled = true
     @State private var aggressiveRequestBodyCapture = false
+    @State private var isSensitiveDataMaskingEnabled = false
     
     public init(
         viewModel: ProwlInspectorViewModel,
@@ -34,6 +35,7 @@ public struct ProwlSettingsView: View {
         _aggressiveRequestBodyCapture = State(
             initialValue: ProwlRuntime.requestBodyCaptureMode == .aggressiveStreamReplay
         )
+        _isSensitiveDataMaskingEnabled = State(initialValue: ProwlRuntime.isSensitiveDataMaskingEnabled)
     }
 
     public var body: some View {
@@ -45,6 +47,15 @@ public struct ProwlSettingsView: View {
             #endif
         }
         .navigationTitle("Settings")
+        .onChange(of: aggressiveRequestBodyCapture) { isEnabled in
+            ProwlRuntime.requestBodyCaptureMode = isEnabled ? .aggressiveStreamReplay : .safeBestEffort
+        }
+        .onChange(of: isLoggingEnabled) { isEnabled in
+            ProwlRuntime.isLoggingEnabled = isEnabled
+        }
+        .onChange(of: isSensitiveDataMaskingEnabled) { isEnabled in
+            ProwlRuntime.isSensitiveDataMaskingEnabled = isEnabled
+        }
         #if os(macOS)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -88,6 +99,7 @@ public struct ProwlSettingsView: View {
             }
 
             loggingSection
+            sensitiveDataSection
             requestBodyCaptureSection
 
             Section(header: Text("Export & Share")) {
@@ -156,6 +168,15 @@ public struct ProwlSettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("Aggressive stream body capture", isOn: $aggressiveRequestBodyCapture)
                         Text("Default OFF (safe). Turn ON only when you need payload from stream-based requests. Safe mode is recommended to avoid request compatibility issues.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                macSection("Sensitive Data") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Mask sensitive data", isOn: $isSensitiveDataMaskingEnabled)
+                        Text("Default OFF. When ON, Prowl redacts values like Authorization bearer tokens, cookies, private keys, and common secret fields.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -238,9 +259,6 @@ public struct ProwlSettingsView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
         }
-        .onChange(of: aggressiveRequestBodyCapture) { isEnabled in
-            ProwlRuntime.requestBodyCaptureMode = isEnabled ? .aggressiveStreamReplay : .safeBestEffort
-        }
     }
 
     private var loggingSection: some View {
@@ -250,8 +268,14 @@ public struct ProwlSettingsView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
         }
-        .onChange(of: isLoggingEnabled) { isEnabled in
-            ProwlRuntime.isLoggingEnabled = isEnabled
+    }
+
+    private var sensitiveDataSection: some View {
+        Section(header: Text("Sensitive Data")) {
+            Toggle("Mask sensitive data", isOn: $isSensitiveDataMaskingEnabled)
+            Text("Default OFF. When ON, Prowl redacts values like Authorization bearer tokens, cookies, private keys, and common secret fields.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
         }
     }
 

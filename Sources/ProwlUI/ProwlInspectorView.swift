@@ -121,6 +121,19 @@ public struct ProwlInspectorView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(requestBodyCaptureModeColor.opacity(0.15), in: Capsule())
+
+            Text("Sensitive Data")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw")
+                .font(.caption2.weight(.bold))
+                .foregroundColor(ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    (ProwlRuntime.isSensitiveDataMaskingEnabled ? Color.green : Color.orange).opacity(0.15),
+                    in: Capsule()
+                )
             Spacer()
         }
         .listRowBackground(Color.clear)

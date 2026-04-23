@@ -16,6 +16,7 @@ public actor ProwlRuntime {
     nonisolated(unsafe) public static var customSessionDelegate: URLSessionDelegate? = nil
     nonisolated(unsafe) public static var requestBodyCaptureMode: ProwlRequestBodyCaptureMode = .safeBestEffort
     nonisolated(unsafe) public static var isLoggingEnabled: Bool = true
+    nonisolated(unsafe) public static var isSensitiveDataMaskingEnabled: Bool = false
 
     private var storage: ProwlStorage
     private var masker: SensitiveDataMasker
@@ -32,7 +33,8 @@ public actor ProwlRuntime {
         storage: ProwlStorage? = nil,
         masker: SensitiveDataMasker? = nil,
         requestBodyCaptureMode: ProwlRequestBodyCaptureMode? = nil,
-        isLoggingEnabled: Bool? = nil
+        isLoggingEnabled: Bool? = nil,
+        isSensitiveDataMaskingEnabled: Bool? = nil
     ) {
         if let storage {
             self.storage = storage
@@ -45,6 +47,9 @@ public actor ProwlRuntime {
         }
         if let isLoggingEnabled {
             Self.isLoggingEnabled = isLoggingEnabled
+        }
+        if let isSensitiveDataMaskingEnabled {
+            Self.isSensitiveDataMaskingEnabled = isSensitiveDataMaskingEnabled
         }
     }
 
@@ -64,6 +69,12 @@ public actor ProwlRuntime {
         }
 
         return false
+    }
+
+    public nonisolated static func installRequestBodySnapshotSupportIfNeeded() {
+        #if canImport(ObjectiveC)
+        ProwlURLSessionBodySnapshotInstaller.installIfNeeded()
+        #endif
     }
 
     public func snapshot() -> (storage: ProwlStorage, masker: SensitiveDataMasker) {

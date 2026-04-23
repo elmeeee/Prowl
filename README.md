@@ -179,8 +179,6 @@ request.httpBodyStream = InputStream(data: payload)
 request.attachProwlBodySnapshot(payload) // safe logging snapshot
 ```
 
-Prowl follows a netfox capture path for stream-backed requests and falls back to attached snapshots when available.
-
 ### URLSession Integration (Automatic + Helpers)
 
 Prowl now installs safe snapshot support at `Prowl.start()` time for:

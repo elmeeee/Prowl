@@ -616,7 +616,7 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func netfoxSectionTextView(_ text: String) -> some View {
+    private func prowlSectionTextView(_ text: String) -> some View {
         Text(text)
             .font(.system(size: Self.contentFontSize, design: .monospaced))
             .foregroundColor(.primary)
@@ -630,11 +630,11 @@ public struct ProwlLogDetailView: View {
     }
 
     private func requestDumpText() -> String {
-        netfoxRequestString(showFullBody: true)
+        prowlRequestString(showFullBody: true)
     }
 
     private func responseDumpText() -> String {
-        netfoxResponseString(showFullBody: true)
+        prowlResponseString(showFullBody: true)
     }
 
     private var shouldShowRequestBodyButton: Bool {
@@ -645,82 +645,57 @@ public struct ProwlLogDetailView: View {
         (log.responseBody?.data.count ?? 0) > 1024 && !isShowingFullResponseBody
     }
 
-    private func netfoxInfoString() -> String {
+    private func prowlInfoString() -> String {
         var lines: [String] = []
-        lines.append("[URL] ")
-        lines.append(log.url?.absoluteString ?? "-")
-        lines.append("")
-        lines.append("[Method] ")
-        lines.append(log.method)
-        lines.append("")
+        lines.append("URL: \(log.url?.absoluteString ?? "-")")
+        lines.append("Method: \(log.method)")
         if let statusCode = log.statusCode {
-            lines.append("[Status] ")
-            lines.append(String(statusCode))
-            lines.append("")
+            lines.append("Status: \(statusCode)")
         }
-        lines.append("[Request date] ")
-        lines.append(String(describing: log.startedAt))
-        lines.append("")
+        lines.append("Request date: \(String(describing: log.startedAt))")
         if log.statusCode != nil {
-            lines.append("[Response date] ")
-            lines.append(String(describing: log.startedAt.addingTimeInterval(log.duration)))
-            lines.append("")
-            lines.append("[Time interval] ")
-            lines.append(String(Float(log.duration)))
-            lines.append("")
+            lines.append("Response date: \(String(describing: log.startedAt.addingTimeInterval(log.duration)))")
+            lines.append("Time interval: \(String(Float(log.duration)))")
         }
-        lines.append("[Timeout] ")
-        lines.append(log.timeoutInterval.map { String($0) } ?? "-")
-        lines.append("")
-        lines.append("[Cache policy] ")
-        lines.append(log.cachePolicy ?? "-")
+        lines.append("Timeout: \(log.timeoutInterval.map { String($0) } ?? "-")")
+        lines.append("Cache policy: \(log.cachePolicy ?? "-")")
         return lines.joined(separator: "\n")
     }
 
-    private func netfoxRequestString(showFullBody: Bool) -> String {
+    private func prowlRequestString(showFullBody: Bool) -> String {
         var lines: [String] = []
-        lines.append("-- Headers --")
-        lines.append("")
+        lines.append("Headers:")
         if log.requestHeaders.isEmpty {
-            lines.append("Request headers are empty")
-            lines.append("")
+            lines.append("Request headers: empty")
         } else {
             for key in log.requestHeaders.keys.sorted() {
-                lines.append("[\(key)] ")
-                lines.append(log.requestHeaders[key] ?? "")
-                lines.append("")
+                lines.append("\(key): \(log.requestHeaders[key] ?? "")")
             }
         }
-        lines.append("-- Body --")
-        lines.append("")
-        lines.append(netfoxBodyString(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
+        lines.append("Request Payload:")
+        lines.append(prowlBodyString(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
         return lines.joined(separator: "\n")
     }
 
-    private func netfoxResponseString(showFullBody: Bool) -> String {
+    private func prowlResponseString(showFullBody: Bool) -> String {
         guard log.statusCode != nil || !log.responseHeaders.isEmpty || log.responseBody != nil else {
             return "No response"
         }
         var lines: [String] = []
-        lines.append("-- Headers --")
-        lines.append("")
+        lines.append("Headers:")
         if log.responseHeaders.isEmpty {
-            lines.append("Response headers are empty")
-            lines.append("")
+            lines.append("Response headers: empty")
         } else {
             for key in log.responseHeaders.keys.sorted() {
-                lines.append("[\(key)] ")
-                lines.append(log.responseHeaders[key] ?? "")
-                lines.append("")
+                lines.append("\(key): \(log.responseHeaders[key] ?? "")")
             }
         }
-        lines.append("-- Body --")
-        lines.append("")
-        lines.append(netfoxBodyString(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
+        lines.append("Response Body:")
+        lines.append(prowlBodyString(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
         return lines.joined(separator: "\n")
     }
 
-    private func netfoxBodyString(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
+    private func prowlBodyString(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
         guard let body else { return emptyText }
         if body.data.isEmpty { return emptyText }
         if body.data.count > 1024 && !showFullBody {

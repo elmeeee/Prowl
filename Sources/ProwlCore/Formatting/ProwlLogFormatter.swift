@@ -218,7 +218,7 @@ public enum ProwlLogFormatter {
         }
         lines.append("-- Body --")
         lines.append("")
-        lines.append(bodyTextNetfoxStyle(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
+        lines.append(bodyTextProwlStyle(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
         return lines.joined(separator: "\n")
     }
 
@@ -241,11 +241,11 @@ public enum ProwlLogFormatter {
         }
         lines.append("-- Body --")
         lines.append("")
-        lines.append(bodyTextNetfoxStyle(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
+        lines.append(bodyTextProwlStyle(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
         return lines.joined(separator: "\n")
     }
 
-    private static func bodyTextNetfoxStyle(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
+    private static func bodyTextProwlStyle(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
         guard let body else { return emptyText }
         if body.data.isEmpty { return emptyText }
         if body.data.count > 1024 && !showFullBody {

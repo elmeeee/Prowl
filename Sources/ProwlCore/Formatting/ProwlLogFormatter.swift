@@ -57,23 +57,54 @@ public enum ProwlLogFormatter {
     }
 
     public static func shareText(log: NetworkLog) -> String {
-        var chunks: [String] = []
-        chunks.append("** INFO **")
-        chunks.append(infoText(log: log))
-
-        chunks.append("** REQUEST **")
-        chunks.append(requestText(log: log, showFullBody: true))
-
-        chunks.append("** RESPONSE **")
-        chunks.append(responseText(log: log, showFullBody: true))
-
-        if let responseBody = log.responseBody, !responseBody.data.isEmpty {
-            let rawResponse = String(data: responseBody.data, encoding: .utf8) ?? responseBody.data.base64EncodedString()
-            chunks.append(rawResponse)
+        var lines: [String] = []
+        lines.append("*INFO*")
+        lines.append("")
+        lines.append("URL: \(log.url?.absoluteString ?? "-")")
+        lines.append("Method: \(log.method)")
+        lines.append("Status: \(log.statusCode.map { String($0) } ?? "N/A")")
+        lines.append("Request date: \(String(describing: log.startedAt))")
+        lines.append("Response date: \(String(describing: log.startedAt.addingTimeInterval(log.duration)))")
+        lines.append("Time interval: \(String(format: "%.8f", log.duration))")
+        lines.append("Timeout: \(log.timeoutInterval.map { String($0) } ?? "-")")
+        lines.append("Cache policy: \(log.cachePolicy ?? "-")")
+        lines.append("")
+        lines.append("*REQUEST*")
+        lines.append("--Request Headers--")
+        for key in log.requestHeaders.keys.sorted() {
+            lines.append("\(key): \(log.requestHeaders[key] ?? "")")
         }
-
-        chunks.append("logged via prowl - [https://github.com/elmeeee/prowl]")
-        return chunks.joined(separator: "\n\n")
+        lines.append("")
+        lines.append("--Request Payload--")
+        lines.append("")
+        if let body = log.requestBody, !body.data.isEmpty {
+            lines.append(prettyBodyText(from: body))
+        } else {
+            lines.append("Request body is empty")
+        }
+        lines.append("")
+        lines.append("*RESPONSE*")
+        lines.append("")
+        lines.append("--Response Headers--")
+        lines.append("")
+        if log.responseHeaders.isEmpty {
+            lines.append("Response headers are empty")
+        } else {
+            for key in log.responseHeaders.keys.sorted() {
+                lines.append("\(key): \(log.responseHeaders[key] ?? "")")
+            }
+        }
+        lines.append("")
+        lines.append("--Response Body--")
+        lines.append("")
+        if let body = log.responseBody, !body.data.isEmpty {
+            lines.append(prettyBodyText(from: body))
+        } else {
+            lines.append("Response body is empty")
+        }
+        lines.append("")
+        lines.append("logged via prowl - [https://github.com/elmeeee/prowl]")
+        return lines.joined(separator: "\n")
     }
 
     private static func isFormURLEncoded(_ contentType: String?) -> Bool {

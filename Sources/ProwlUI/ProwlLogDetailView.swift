@@ -158,8 +158,99 @@ public struct ProwlLogDetailView: View {
 
     private var infoTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            fixedHeightSectionCard(title: "Info") {
-                netfoxSectionTextView(netfoxInfoString())
+            fixedHeightSectionCard(title: "Endpoint") {
+                VStack(alignment: .leading, spacing: 8) {
+                    labeledValue(
+                        "URL",
+                        value: log.url?.absoluteString ?? "-",
+                        toastMessage: "URL copied"
+                    )
+                    Divider()
+                    HStack(spacing: 10) {
+                        capsuleTag(
+                            text: log.method.uppercased(),
+                            color: .blue,
+                            copyValue: log.method.uppercased(),
+                            toastMessage: "Method copied"
+                        )
+                        if let statusCode = log.statusCode {
+                            capsuleTag(
+                                text: "Status \(statusCode)",
+                                color: statusColor(statusCode),
+                                copyValue: String(statusCode),
+                                toastMessage: "Status code copied"
+                            )
+                        } else {
+                            capsuleTag(
+                                text: "No response",
+                                color: .secondary,
+                                copyValue: "No response",
+                                toastMessage: "Status copied"
+                            )
+                        }
+                    }
+                }
+            }
+
+            fixedHeightSectionCard(title: "Timing") {
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledValue(
+                        "Request date",
+                        value: String(describing: log.startedAt),
+                        toastMessage: "Request date copied"
+                    )
+                    if log.statusCode != nil {
+                        labeledValue(
+                            "Response date",
+                            value: String(describing: log.startedAt.addingTimeInterval(log.duration)),
+                            toastMessage: "Response date copied"
+                        )
+                        labeledValue(
+                            "Time interval",
+                            value: String(Float(log.duration)),
+                            toastMessage: "Time interval copied"
+                        )
+                    }
+                    labeledValue(
+                        "Timeout",
+                        value: log.timeoutInterval.map { String($0) } ?? "-",
+                        toastMessage: "Timeout copied"
+                    )
+                    labeledValue(
+                        "Cache policy",
+                        value: log.cachePolicy ?? "-",
+                        toastMessage: "Cache policy copied"
+                    )
+                }
+            }
+
+            fixedHeightSectionCard(title: "Payload") {
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledValue(
+                        "Request type",
+                        value: log.requestBody?.contentType ?? "-",
+                        toastMessage: "Request type copied"
+                    )
+                    labeledValue(
+                        "Response type",
+                        value: log.responseBody?.contentType ?? "-",
+                        toastMessage: "Response type copied"
+                    )
+                    labeledValue(
+                        "Request size",
+                        value: byteSizeText(log.requestBody?.data.count ?? 0),
+                        toastMessage: "Request size copied"
+                    )
+                    labeledValue(
+                        "Response size",
+                        value: byteSizeText(log.responseBody?.data.count ?? 0),
+                        toastMessage: "Response size copied"
+                    )
+                }
+            }
+
+            fixedHeightSectionCard(title: "URL Query Strings") {
+                queryItemList(log.url)
             }
         }
     }
@@ -169,19 +260,18 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Request") {
                 copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
-            fixedHeightSectionCard(title: "Request") {
-                VStack(alignment: .leading, spacing: 10) {
-                    netfoxSectionTextView(netfoxRequestString(showFullBody: isShowingFullRequestBody))
-                    if shouldShowRequestBodyButton {
-                        Button("Show request body") {
-                            isShowingFullRequestBody = true
-                        }
-                        .font(.system(size: Self.contentFontSize, weight: .bold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1), in: Capsule())
-                    }
-                }
+            fixedHeightSectionCard(title: "Headers") {
+                headerList(log.requestHeaders, emptyText: "Request headers are empty")
+            }
+            fixedHeightSectionCard(title: "Body") {
+                bodyView(
+                    log.requestBody,
+                    emptyText: "Request body is empty",
+                    applyJSONHighlighting: true,
+                    toastMessage: "Request body copied",
+                    isShowingFullBody: $isShowingFullRequestBody,
+                    fullBodyButtonTitle: "Show request body"
+                )
             }
         }
     }
@@ -191,19 +281,18 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Response") {
                 copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
             }
-            fixedHeightSectionCard(title: "Response") {
-                VStack(alignment: .leading, spacing: 10) {
-                    netfoxSectionTextView(netfoxResponseString(showFullBody: isShowingFullResponseBody))
-                    if shouldShowResponseBodyButton {
-                        Button("Show response body") {
-                            isShowingFullResponseBody = true
-                        }
-                        .font(.system(size: Self.contentFontSize, weight: .bold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1), in: Capsule())
-                    }
-                }
+            fixedHeightSectionCard(title: "Headers") {
+                headerList(log.responseHeaders, emptyText: "Response headers are empty")
+            }
+            fixedHeightSectionCard(title: "Body") {
+                bodyView(
+                    log.responseBody,
+                    emptyText: "Response body is empty",
+                    applyJSONHighlighting: true,
+                    toastMessage: "Response body copied",
+                    isShowingFullBody: $isShowingFullResponseBody,
+                    fullBodyButtonTitle: "Show response body"
+                )
             }
         }
     }

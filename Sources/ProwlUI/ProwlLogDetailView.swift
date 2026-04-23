@@ -76,7 +76,7 @@ public struct ProwlLogDetailView: View {
                 .padding(.bottom, 2)
         }
         .background(platformBackground)
-        .navigationTitle("Details")
+        .navigationTitle(detailsNavigationTitle)
         #if os(iOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -146,93 +146,20 @@ public struct ProwlLogDetailView: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 
+    private var detailsNavigationTitle: String {
+        let appName = (Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String)
+            ?? (Bundle.main.infoDictionary?["CFBundleName"] as? String)
+            ?? ""
+        if appName.isEmpty {
+            return "Details"
+        }
+        return "Details \(appName)"
+    }
+
     private var infoTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            fixedHeightSectionCard(title: "Endpoint") {
-                VStack(alignment: .leading, spacing: 8) {
-                    labeledValue(
-                        "URL",
-                        value: log.url?.absoluteString ?? "-",
-                        toastMessage: "URL copied"
-                    )
-                    Divider()
-                    HStack(spacing: 10) {
-                        capsuleTag(
-                            text: log.method.uppercased(),
-                            color: .blue,
-                            copyValue: log.method.uppercased(),
-                            toastMessage: "Method copied"
-                        )
-                        capsuleTag(
-                            text: "Status \(log.statusCode.map { String($0) } ?? "N/A")",
-                            color: statusColor(log.statusCode),
-                            copyValue: log.statusCode.map { String($0) } ?? "N/A",
-                            toastMessage: "Status code copied"
-                        )
-                    }
-                }
-            }
-
-            fixedHeightSectionCard(title: "Timing") {
-                VStack(alignment: .leading, spacing: 10) {
-                    labeledValue(
-                        "Request Time",
-                        value: Self.detailDateFormatter.string(from: log.startedAt),
-                        toastMessage: "Request time copied"
-                    )
-                    labeledValue(
-                        "Response Time",
-                        value: Self.detailDateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)),
-                        toastMessage: "Response time copied"
-                    )
-                    labeledValue(
-                        "Duration",
-                        value: String(format: "%.8f s", log.duration),
-                        toastMessage: "Duration copied"
-                    )
-                    labeledValue(
-                        "Timeout",
-                        value: log.timeoutInterval.map { String($0) } ?? "-",
-                        toastMessage: "Timeout copied"
-                    )
-                    labeledValue(
-                        "Cache Policy",
-                        value: log.cachePolicy ?? "-",
-                        toastMessage: "Cache policy copied"
-                    )
-                    if let error = log.errorDescription, !error.isEmpty {
-                        labeledValue("Error", value: error, toastMessage: "Error copied")
-                    }
-                }
-            }
-
-            fixedHeightSectionCard(title: "Payload") {
-                VStack(alignment: .leading, spacing: 10) {
-                    labeledValue(
-                        "Request Type",
-                        value: log.requestBody?.contentType ?? "-",
-                        toastMessage: "Request type copied"
-                    )
-                    labeledValue(
-                        "Response Type",
-                        value: log.responseBody?.contentType ?? "-",
-                        toastMessage: "Response type copied"
-                    )
-                    labeledValue(
-                        "Request Size",
-                        value: byteSizeText(log.requestBody?.data.count ?? 0),
-                        toastMessage: "Request size copied"
-                    )
-                    labeledValue(
-                        "Response Size",
-                        value: byteSizeText(log.responseBody?.data.count ?? 0),
-                        toastMessage: "Response size copied"
-                    )
-                }
-            }
-
-            fixedHeightSectionCard(title: "URL Query Strings") {
-                queryItemList(log.url)
+            fixedHeightSectionCard(title: "Info") {
+                netfoxSectionTextView(netfoxInfoString())
             }
         }
     }
@@ -242,18 +169,19 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Request") {
                 copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
             }
-            fixedHeightSectionCard(title: "Headers") {
-                headerList(log.requestHeaders, emptyText: "Request headers are empty")
-            }
-            fixedHeightSectionCard(title: "Body") {
-                bodyView(
-                    log.requestBody,
-                    emptyText: "Request body is empty",
-                    applyJSONHighlighting: true,
-                    toastMessage: "Request body copied",
-                    isShowingFullBody: $isShowingFullRequestBody,
-                    fullBodyButtonTitle: "Show request body"
-                )
+            fixedHeightSectionCard(title: "Request") {
+                VStack(alignment: .leading, spacing: 10) {
+                    netfoxSectionTextView(netfoxRequestString(showFullBody: isShowingFullRequestBody))
+                    if shouldShowRequestBodyButton {
+                        Button("Show request body") {
+                            isShowingFullRequestBody = true
+                        }
+                        .font(.system(size: Self.contentFontSize, weight: .bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1), in: Capsule())
+                    }
+                }
             }
         }
     }
@@ -263,18 +191,19 @@ public struct ProwlLogDetailView: View {
             sectionHeader(title: "Response") {
                 copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
             }
-            fixedHeightSectionCard(title: "Headers") {
-                headerList(log.responseHeaders, emptyText: "Response headers are empty")
-            }
-            fixedHeightSectionCard(title: "Body") {
-                bodyView(
-                    log.responseBody,
-                    emptyText: "Response body is empty",
-                    applyJSONHighlighting: true,
-                    toastMessage: "Response body copied",
-                    isShowingFullBody: $isShowingFullResponseBody,
-                    fullBodyButtonTitle: "Show response body"
-                )
+            fixedHeightSectionCard(title: "Response") {
+                VStack(alignment: .leading, spacing: 10) {
+                    netfoxSectionTextView(netfoxResponseString(showFullBody: isShowingFullResponseBody))
+                    if shouldShowResponseBodyButton {
+                        Button("Show response body") {
+                            isShowingFullResponseBody = true
+                        }
+                        .font(.system(size: Self.contentFontSize, weight: .bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1), in: Capsule())
+                    }
+                }
             }
         }
     }
@@ -549,28 +478,118 @@ public struct ProwlLogDetailView: View {
         return ProwlLogFormatter.bodyText(from: body, pretty: true)
     }
 
+    @ViewBuilder
+    private func netfoxSectionTextView(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: Self.contentFontSize, design: .monospaced))
+            .foregroundColor(.primary)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(platformBodyBackground)
+            )
+    }
+
     private func requestDumpText() -> String {
-        var lines: [String] = []
-        lines.append("Headers")
-        for key in log.requestHeaders.keys.sorted() {
-            lines.append("\(key): \(log.requestHeaders[key] ?? "")")
-        }
-        lines.append("")
-        lines.append("Body")
-        lines.append(bodyText(log.requestBody, emptyText: "Request body is empty"))
-        return lines.joined(separator: "\n")
+        netfoxRequestString(showFullBody: true)
     }
 
     private func responseDumpText() -> String {
+        netfoxResponseString(showFullBody: true)
+    }
+
+    private var shouldShowRequestBodyButton: Bool {
+        (log.requestBody?.data.count ?? 0) > 1024 && !isShowingFullRequestBody
+    }
+
+    private var shouldShowResponseBodyButton: Bool {
+        (log.responseBody?.data.count ?? 0) > 1024 && !isShowingFullResponseBody
+    }
+
+    private func netfoxInfoString() -> String {
         var lines: [String] = []
-        lines.append("Headers")
-        for key in log.responseHeaders.keys.sorted() {
-            lines.append("\(key): \(log.responseHeaders[key] ?? "")")
-        }
+        lines.append("[URL] ")
+        lines.append(log.url?.absoluteString ?? "-")
         lines.append("")
-        lines.append("Body")
-        lines.append(bodyText(log.responseBody, emptyText: "Response body is empty"))
+        lines.append("[Method] ")
+        lines.append(log.method)
+        lines.append("")
+        if let statusCode = log.statusCode {
+            lines.append("[Status] ")
+            lines.append(String(statusCode))
+            lines.append("")
+        }
+        lines.append("[Request date] ")
+        lines.append(String(describing: log.startedAt))
+        lines.append("")
+        if log.statusCode != nil {
+            lines.append("[Response date] ")
+            lines.append(String(describing: log.startedAt.addingTimeInterval(log.duration)))
+            lines.append("")
+            lines.append("[Time interval] ")
+            lines.append(String(Float(log.duration)))
+            lines.append("")
+        }
+        lines.append("[Timeout] ")
+        lines.append(log.timeoutInterval.map { String($0) } ?? "-")
+        lines.append("")
+        lines.append("[Cache policy] ")
+        lines.append(log.cachePolicy ?? "-")
         return lines.joined(separator: "\n")
+    }
+
+    private func netfoxRequestString(showFullBody: Bool) -> String {
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        lines.append("")
+        if log.requestHeaders.isEmpty {
+            lines.append("Request headers are empty")
+            lines.append("")
+        } else {
+            for key in log.requestHeaders.keys.sorted() {
+                lines.append("[\(key)] ")
+                lines.append(log.requestHeaders[key] ?? "")
+                lines.append("")
+            }
+        }
+        lines.append("-- Body --")
+        lines.append("")
+        lines.append(netfoxBodyString(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
+        return lines.joined(separator: "\n")
+    }
+
+    private func netfoxResponseString(showFullBody: Bool) -> String {
+        guard log.statusCode != nil || !log.responseHeaders.isEmpty || log.responseBody != nil else {
+            return "No response"
+        }
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        lines.append("")
+        if log.responseHeaders.isEmpty {
+            lines.append("Response headers are empty")
+            lines.append("")
+        } else {
+            for key in log.responseHeaders.keys.sorted() {
+                lines.append("[\(key)] ")
+                lines.append(log.responseHeaders[key] ?? "")
+                lines.append("")
+            }
+        }
+        lines.append("-- Body --")
+        lines.append("")
+        lines.append(netfoxBodyString(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
+        return lines.joined(separator: "\n")
+    }
+
+    private func netfoxBodyString(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
+        guard let body else { return emptyText }
+        if body.data.isEmpty { return emptyText }
+        if body.data.count > 1024 && !showFullBody {
+            return "Too long to show. If you want to see it, please tap the following button"
+        }
+        return ProwlLogFormatter.bodyText(from: body, pretty: true)
     }
 
     @ViewBuilder

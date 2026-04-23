@@ -57,53 +57,15 @@ public enum ProwlLogFormatter {
     }
 
     public static func shareText(log: NetworkLog) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
-
-        let requestBodyText: String
-        if let body = log.requestBody, !body.data.isEmpty {
-            requestBodyText = prettyBodyText(from: body)
-        } else {
-            requestBodyText = "Request body is empty"
-        }
-
-        let responseBodyText: String
-        if let body = log.responseBody, !body.data.isEmpty {
-            if body.data.count > 2_000 {
-                responseBodyText = "Too long to show. If you want to see it, please tap the following button"
-            } else {
-                responseBodyText = prettyBodyText(from: body)
-            }
-        } else {
-            responseBodyText = "Response body is empty"
-        }
-
         var chunks: [String] = []
         chunks.append("** INFO **")
-        chunks.append("[URL] \n\(log.url?.absoluteString ?? "-")")
-        chunks.append("[Method] \n\(log.method)")
-        chunks.append("[Status] \n\(log.statusCode.map { String($0) } ?? "N/A")")
-        chunks.append("[Request date] \n\(dateFormatter.string(from: log.startedAt))")
-        chunks.append("[Response date] \n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))")
-        chunks.append("[Time interval] \n\(String(format: "%.6f", log.duration))")
-        chunks.append("[Timeout] \n\(log.timeoutInterval.map { String($0) } ?? "-")")
-        chunks.append("[Cache policy] \n\(log.cachePolicy ?? "-")")
+        chunks.append(infoText(log: log))
 
         chunks.append("** REQUEST **")
-        chunks.append("-- Headers --")
-        for key in log.requestHeaders.keys.sorted() {
-            chunks.append("[\(key)] \n\(log.requestHeaders[key] ?? "")")
-        }
-        chunks.append("-- Body --")
-        chunks.append(requestBodyText)
+        chunks.append(requestText(log: log, showFullBody: true))
 
         chunks.append("** RESPONSE **")
-        chunks.append("-- Headers --")
-        for key in log.responseHeaders.keys.sorted() {
-            chunks.append("[\(key)] \n\(log.responseHeaders[key] ?? "")")
-        }
-        chunks.append("-- Body --")
-        chunks.append(responseBodyText)
+        chunks.append(responseText(log: log, showFullBody: true))
 
         if let responseBody = log.responseBody, !responseBody.data.isEmpty {
             let rawResponse = String(data: responseBody.data, encoding: .utf8) ?? responseBody.data.base64EncodedString()
@@ -138,46 +100,17 @@ public enum ProwlLogFormatter {
     }
 
     private static func formattedText(logs: [NetworkLog]) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
-
         return logs.map { log in
             var c: [String] = []
 
-            c.append("*INFO*")
-            c.append("[URL]\n\(log.url?.absoluteString ?? "-")\n")
-            c.append("[Method]\n\(log.method)\n")
-            c.append("[Status]\n\(log.statusCode.map { String($0) } ?? "N/A")\n")
-            c.append("[Request date]\n\(dateFormatter.string(from: log.startedAt))\n")
-            c.append("[Response date]\n\(dateFormatter.string(from: log.startedAt.addingTimeInterval(log.duration)))\n")
-            c.append("[Time interval]\n\(String(format: "%.6f", log.duration))\n")
-            c.append("[Timeout]\n\(log.timeoutInterval.map { String($0) } ?? "-")\n")
-            c.append("[Cache policy]\n\(log.cachePolicy ?? "-")\n")
-            if let error = log.errorDescription { c.append("[Error]\n\(error)\n") }
+            c.append("** INFO **")
+            c.append(infoText(log: log))
 
-            c.append("*REQUEST*")
-            c.append("-- Headers --\n")
-            for key in log.requestHeaders.keys.sorted() {
-                c.append("[\(key)]\n\(log.requestHeaders[key] ?? "")\n")
-            }
-            c.append("-- Body --\n")
-            if let body = log.requestBody, !body.data.isEmpty {
-                c.append("\(prettyBodyText(from: body))\n")
-            } else {
-                c.append("Request body is empty\n")
-            }
+            c.append("** REQUEST **")
+            c.append(requestText(log: log, showFullBody: true))
 
             c.append("** RESPONSE **")
-            c.append("-- Headers --\n")
-            for key in log.responseHeaders.keys.sorted() {
-                c.append("[\(key)]\n\(log.responseHeaders[key] ?? "")\n")
-            }
-            c.append("-- Body --\n")
-            if let body = log.responseBody, !body.data.isEmpty {
-                c.append("\(prettyBodyText(from: body))\n")
-            } else {
-                c.append("Response body is empty\n")
-            }
+            c.append(responseText(log: log, showFullBody: true))
 
             return c.joined(separator: "\n")
         }.joined(separator: "\n\n--------------------------------------------------------------\n\n")
@@ -204,5 +137,93 @@ public enum ProwlLogFormatter {
 
     private static func escape(value: String) -> String {
         value.replacingOccurrences(of: "'", with: "'\"'\"'")
+    }
+
+    private static func infoText(log: NetworkLog) -> String {
+        var lines: [String] = []
+        lines.append("[URL] ")
+        lines.append(log.url?.absoluteString ?? "-")
+        lines.append("")
+        lines.append("[Method] ")
+        lines.append(log.method)
+        lines.append("")
+        if let statusCode = log.statusCode {
+            lines.append("[Status] ")
+            lines.append(String(statusCode))
+            lines.append("")
+        }
+        lines.append("[Request date] ")
+        lines.append(String(describing: log.startedAt))
+        lines.append("")
+        if hasResponse(log) {
+            lines.append("[Response date] ")
+            lines.append(String(describing: log.startedAt.addingTimeInterval(log.duration)))
+            lines.append("")
+            lines.append("[Time interval] ")
+            lines.append(String(Float(log.duration)))
+            lines.append("")
+        }
+        lines.append("[Timeout] ")
+        lines.append(log.timeoutInterval.map { String($0) } ?? "-")
+        lines.append("")
+        lines.append("[Cache policy] ")
+        lines.append(log.cachePolicy ?? "-")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func requestText(log: NetworkLog, showFullBody: Bool) -> String {
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        lines.append("")
+        if log.requestHeaders.isEmpty {
+            lines.append("Request headers are empty")
+            lines.append("")
+        } else {
+            for key in log.requestHeaders.keys.sorted() {
+                lines.append("[\(key)] ")
+                lines.append(log.requestHeaders[key] ?? "")
+                lines.append("")
+            }
+        }
+        lines.append("-- Body --")
+        lines.append("")
+        lines.append(bodyTextNetfoxStyle(body: log.requestBody, emptyText: "Request body is empty", showFullBody: showFullBody))
+        return lines.joined(separator: "\n")
+    }
+
+    private static func responseText(log: NetworkLog, showFullBody: Bool) -> String {
+        guard hasResponse(log) else {
+            return "No response"
+        }
+        var lines: [String] = []
+        lines.append("-- Headers --")
+        lines.append("")
+        if log.responseHeaders.isEmpty {
+            lines.append("Response headers are empty")
+            lines.append("")
+        } else {
+            for key in log.responseHeaders.keys.sorted() {
+                lines.append("[\(key)] ")
+                lines.append(log.responseHeaders[key] ?? "")
+                lines.append("")
+            }
+        }
+        lines.append("-- Body --")
+        lines.append("")
+        lines.append(bodyTextNetfoxStyle(body: log.responseBody, emptyText: "Response body is empty", showFullBody: showFullBody))
+        return lines.joined(separator: "\n")
+    }
+
+    private static func bodyTextNetfoxStyle(body: NetworkLog.Body?, emptyText: String, showFullBody: Bool) -> String {
+        guard let body else { return emptyText }
+        if body.data.isEmpty { return emptyText }
+        if body.data.count > 1024 && !showFullBody {
+            return "Too long to show. If you want to see it, please tap the following button"
+        }
+        return prettyBodyText(from: body)
+    }
+
+    private static func hasResponse(_ log: NetworkLog) -> Bool {
+        log.statusCode != nil || !log.responseHeaders.isEmpty || log.responseBody != nil
     }
 }

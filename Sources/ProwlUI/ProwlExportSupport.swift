@@ -8,11 +8,11 @@
 
 import Foundation
 
-public struct ProwlExportPayload: Identifiable {
-    public let id = UUID()
-    public let content: String
+struct ProwlExportPayload: Identifiable {
+    let id = UUID()
+    let content: String
 
-    public init(content: String) {
+    init(content: String) {
         self.content = content
     }
 }
@@ -21,30 +21,30 @@ public struct ProwlExportPayload: Identifiable {
 import SwiftUI
 import UIKit
 
-public struct ProwlActivityView: UIViewControllerRepresentable {
-    public let activityItems: [Any]
+struct ProwlActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
 
-    public init(activityItems: [Any]) {
+    init(activityItems: [Any]) {
         self.activityItems = activityItems
     }
 
-    public func makeUIViewController(context: Context) -> UIActivityViewController {
+    func makeUIViewController(context: Context) -> UIActivityViewController {
         UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
     }
 
-    public func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 #else
 import SwiftUI
 
-public struct ProwlActivityView: View {
-    public let activityItems: [Any]
+struct ProwlActivityView: View {
+    let activityItems: [Any]
 
-    public init(activityItems: [Any]) {
+    init(activityItems: [Any]) {
         self.activityItems = activityItems
     }
 
-    public var body: some View {
+    var body: some View {
         EmptyView()
     }
 }
@@ -53,9 +53,9 @@ public struct ProwlActivityView: View {
 #if os(macOS)
 import AppKit
 
-public enum ProwlMacExporter {
+enum ProwlMacExporter {
     @MainActor
-    public static func save(content: String, suggestedFileName: String) {
+    static func save(content: String, suggestedFileName: String) {
         let fileURL = temporaryExportURL(fileName: suggestedFileName)
         do {
             try content.write(to: fileURL, atomically: true, encoding: .utf8)

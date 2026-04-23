@@ -8,16 +8,16 @@
 
 import Foundation
 
-public enum ProwlStatusCategory: String, CaseIterable, Identifiable, Sendable {
+enum ProwlStatusCategory: String, CaseIterable, Identifiable, Sendable {
     case all
     case success2xx
     case clientError4xx
     case serverError5xx
     case other
 
-    public var id: String { rawValue }
+    var id: String { rawValue }
 
-    public var title: String {
+    var title: String {
         switch self {
         case .all: return "All"
         case .success2xx: return "2xx"
@@ -27,7 +27,7 @@ public enum ProwlStatusCategory: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public func matches(_ statusCode: Int?) -> Bool {
+    func matches(_ statusCode: Int?) -> Bool {
         guard let statusCode else { return self == .all || self == .other }
         switch self {
         case .all:

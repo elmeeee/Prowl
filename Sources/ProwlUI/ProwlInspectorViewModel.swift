@@ -10,16 +10,16 @@ import Foundation
 import ProwlCore
 
 @MainActor
-public final class ProwlInspectorViewModel: ObservableObject {
-    @Published public var searchText = ""
-    @Published public var statusFilter: ProwlStatusCategory = .all
-    @Published public var contentTypeFilter: ProwlContentTypeCategory = .all
-    @Published public private(set) var logs: [NetworkLog] = []
+final class ProwlInspectorViewModel: ObservableObject {
+    @Published var searchText = ""
+    @Published var statusFilter: ProwlStatusCategory = .all
+    @Published var contentTypeFilter: ProwlContentTypeCategory = .all
+    @Published private(set) var logs: [NetworkLog] = []
 
     private var streamTask: Task<Void, Never>?
     private let explicitStorage: ProwlStorage?
 
-    public init(storage: ProwlStorage? = nil) {
+    init(storage: ProwlStorage? = nil) {
         self.explicitStorage = storage
         streamTask = Task { [weak self] in
             guard let self else { return }
@@ -60,7 +60,7 @@ public final class ProwlInspectorViewModel: ObservableObject {
         streamTask?.cancel()
     }
 
-    public var filteredLogs: [NetworkLog] {
+    var filteredLogs: [NetworkLog] {
         logs.filter { log in
             matchesSearch(log) && statusFilter.matches(log.statusCode) && contentTypeFilter.matches(log)
         }
@@ -83,7 +83,7 @@ public final class ProwlInspectorViewModel: ObservableObject {
         return false
     }
 
-    public func clearLogs() {
+    func clearLogs() {
         Task {
             let targetStorage: ProwlStorage
             if let explicitStorage = explicitStorage {
@@ -96,7 +96,7 @@ public final class ProwlInspectorViewModel: ObservableObject {
     }
 }
 
-public enum ProwlContentTypeCategory: String, CaseIterable, Identifiable {
+enum ProwlContentTypeCategory: String, CaseIterable, Identifiable {
     case all = "All Types"
     case json = "JSON"
     case xml = "XML"
@@ -104,7 +104,7 @@ public enum ProwlContentTypeCategory: String, CaseIterable, Identifiable {
     case image = "Image"
     case other = "Other"
 
-    public var id: String { rawValue }
+    var id: String { rawValue }
 
     func matches(_ log: NetworkLog) -> Bool {
         guard self != .all else { return true }

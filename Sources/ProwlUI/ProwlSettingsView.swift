@@ -12,17 +12,17 @@ import ProwlCore
 import UIKit
 #endif
 
-public struct ProwlSettingsView: View {
+struct ProwlSettingsView: View {
     @ObservedObject var viewModel: ProwlInspectorViewModel
-    public var onExportText: () -> Void
-    public var onExportCURL: () -> Void
+    var onExportText: () -> Void
+    var onExportCURL: () -> Void
     
     @Environment(\.dismiss) private var dismiss
     @AppStorage("prowl_color_scheme") private var themeRaw: Int = 0
     @State private var isLoggingEnabled = true
     @State private var isSensitiveDataMaskingEnabled = false
     
-    public init(
+    init(
         viewModel: ProwlInspectorViewModel,
         onExportText: @escaping () -> Void,
         onExportCURL: @escaping () -> Void
@@ -34,7 +34,7 @@ public struct ProwlSettingsView: View {
         _isSensitiveDataMaskingEnabled = State(initialValue: ProwlRuntime.isSensitiveDataMaskingEnabled)
     }
 
-    public var body: some View {
+    var body: some View {
         Group {
             #if os(macOS)
             macSettingsLayout

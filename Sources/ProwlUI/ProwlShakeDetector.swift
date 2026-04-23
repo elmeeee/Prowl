@@ -12,14 +12,14 @@ import UIKit
 import ObjectiveC.runtime
 
 @MainActor
-public enum ProwlShakeMonitor {
-    public static let didShakeNotification = Notification.Name("com.prowl.didShake")
+enum ProwlShakeMonitor {
+    static let didShakeNotification = Notification.Name("com.prowl.didShake")
 
     private static let debounceInterval: TimeInterval = 1.5
     private static var isInstalled = false
     private static var lastPostedAt: Date?
 
-    public static func installIfNeeded() {
+    static func installIfNeeded() {
         guard !isInstalled else { return }
         isInstalled = true
 
@@ -80,14 +80,14 @@ public enum ProwlShakeMonitor {
     }
 }
 
-public struct ProwlShakeDetector: View {
-    public let onShake: () -> Void
+struct ProwlShakeDetector: View {
+    let onShake: () -> Void
 
-    public init(onShake: @escaping () -> Void) {
+    init(onShake: @escaping () -> Void) {
         self.onShake = onShake
     }
 
-    public var body: some View {
+    var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
             .onAppear {
@@ -111,14 +111,14 @@ private extension UIApplication {
 }
 
 #else
-public struct ProwlShakeDetector: View {
-    public let onShake: () -> Void
+struct ProwlShakeDetector: View {
+    let onShake: () -> Void
 
-    public init(onShake: @escaping () -> Void) {
+    init(onShake: @escaping () -> Void) {
         self.onShake = onShake
     }
 
-    public var body: some View {
+    var body: some View {
         EmptyView()
     }
 }

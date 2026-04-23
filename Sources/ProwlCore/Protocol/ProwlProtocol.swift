@@ -1,13 +1,13 @@
 import Foundation
 
-public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
+package final class ProwlProtocol: URLProtocol, @unchecked Sendable {
     private static let handledKey = "com.prowl.handled"
     private static let requestIDKey = "com.prowl.requestID"
 
     private var session: URLSession?
     private var dataTask: URLSessionDataTask?
 
-    override public class func canInit(with request: URLRequest) -> Bool {
+    package override class func canInit(with request: URLRequest) -> Bool {
         guard ProwlRuntime.isLoggingEnabled else {
             return false
         }
@@ -28,11 +28,11 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         return true
     }
 
-    override public class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    package override class func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 
-    override public func startLoading() {
+    package override func startLoading() {
         guard let mutableRequest = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
@@ -82,7 +82,7 @@ public final class ProwlProtocol: URLProtocol, @unchecked Sendable {
         }
     }
 
-    override public func stopLoading() {
+    package override func stopLoading() {
         dataTask?.cancel()
         session?.invalidateAndCancel()
         dataTask = nil

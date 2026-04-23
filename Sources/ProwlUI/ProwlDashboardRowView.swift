@@ -9,7 +9,7 @@
 import SwiftUI
 import ProwlCore
 
-public struct ProwlDashboardRowView: View {
+struct ProwlDashboardRowView: View {
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -17,13 +17,13 @@ public struct ProwlDashboardRowView: View {
         return formatter
     }()
 
-    public let log: NetworkLog
+    let log: NetworkLog
 
-    public init(log: NetworkLog) {
+    init(log: NetworkLog) {
         self.log = log
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
                 methodBadge(log.method)

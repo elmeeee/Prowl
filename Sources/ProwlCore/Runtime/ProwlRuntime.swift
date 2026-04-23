@@ -1,18 +1,18 @@
 import Foundation
 
-public actor ProwlRuntime {
-    public static let shared = ProwlRuntime()
+package actor ProwlRuntime {
+    package static let shared = ProwlRuntime()
     
-    nonisolated(unsafe) public static var ignoredURLs: Set<String> = []
-    nonisolated(unsafe) public static var ignoredURLRegexes: Set<String> = []
-    nonisolated(unsafe) public static var customSessionDelegate: URLSessionDelegate? = nil
-    nonisolated(unsafe) public static var isLoggingEnabled: Bool = true
-    nonisolated(unsafe) public static var isSensitiveDataMaskingEnabled: Bool = false
+    nonisolated(unsafe) package static var ignoredURLs: Set<String> = []
+    nonisolated(unsafe) package static var ignoredURLRegexes: Set<String> = []
+    nonisolated(unsafe) package static var customSessionDelegate: URLSessionDelegate? = nil
+    nonisolated(unsafe) package static var isLoggingEnabled: Bool = true
+    nonisolated(unsafe) package static var isSensitiveDataMaskingEnabled: Bool = false
 
     private var storage: ProwlStorage
     private var masker: SensitiveDataMasker
 
-    public init(
+    package init(
         storage: ProwlStorage = .init(),
         masker: SensitiveDataMasker = .init()
     ) {
@@ -20,7 +20,7 @@ public actor ProwlRuntime {
         self.masker = masker
     }
 
-    public func configure(
+    package func configure(
         storage: ProwlStorage? = nil,
         masker: SensitiveDataMasker? = nil,
         isLoggingEnabled: Bool? = nil,
@@ -40,7 +40,7 @@ public actor ProwlRuntime {
         }
     }
 
-    public nonisolated static func shouldIgnore(_ absoluteURLString: String) -> Bool {
+    package nonisolated static func shouldIgnore(_ absoluteURLString: String) -> Bool {
         if ignoredURLs.contains(where: { absoluteURLString.contains($0) }) {
             return true
         }
@@ -58,17 +58,17 @@ public actor ProwlRuntime {
         return false
     }
 
-    public nonisolated static func installRequestBodySnapshotSupportIfNeeded() {
+    package nonisolated static func installRequestBodySnapshotSupportIfNeeded() {
         #if canImport(ObjectiveC)
         ProwlURLSessionBodySnapshotInstaller.installIfNeeded()
         #endif
     }
 
-    public func snapshot() -> (storage: ProwlStorage, masker: SensitiveDataMasker) {
+    package func snapshot() -> (storage: ProwlStorage, masker: SensitiveDataMasker) {
         (storage, masker)
     }
 
-    public func currentStorage() -> ProwlStorage {
+    package func currentStorage() -> ProwlStorage {
         storage
     }
 }

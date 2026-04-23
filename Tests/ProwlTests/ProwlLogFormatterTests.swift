@@ -30,23 +30,24 @@ func givenLogWithMetadata_whenBuildingShareText_thenIncludesRequiredSectionsAndF
 
     let shared = ProwlLogFormatter.shareText(log: log)
 
-    #expect(shared.contains("** INFO **"))
-    #expect(shared.contains("[URL]"))
+    #expect(shared.contains("*INFO*"))
+    #expect(shared.contains("URL:"))
     #expect(shared.contains("https://httpbin.org/anything"))
-    #expect(shared.contains("[Timeout]"))
+    #expect(shared.contains("Timeout:"))
     #expect(shared.contains("60.0"))
-    #expect(shared.contains("[Cache policy]"))
+    #expect(shared.contains("Cache policy:"))
     #expect(shared.contains("UseProtocolCachePolicy"))
     #expect(shared.contains("logged via prowl - [https://github.com/elmeeee/prowl]"))
 }
 
-@Test("ProwlLogFormatter share text shows long-body placeholder")
-func givenLargeResponseBody_whenBuildingShareText_thenShowsTruncatedPlaceholder() {
+@Test("ProwlLogFormatter share text includes response body section")
+func givenLargeResponseBody_whenBuildingShareText_thenIncludesResponseBodySection() {
     let longJSON = "{" + String(repeating: "\"x\":1,", count: 800) + "\"z\":1}"
     let responseBody = NetworkLog.Body(data: Data(longJSON.utf8), contentType: "application/json")
     let log = makeLog(responseBody: responseBody)
 
     let shared = ProwlLogFormatter.shareText(log: log)
 
-    #expect(shared.contains("Too long to show. If you want to see it, please tap the following button"))
+    #expect(shared.contains("--Response Body--"))
+    #expect(shared.contains("logged via prowl - [https://github.com/elmeeee/prowl]"))
 }

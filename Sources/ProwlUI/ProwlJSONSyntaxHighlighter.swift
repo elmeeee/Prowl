@@ -16,8 +16,8 @@ import AppKit
 private typealias ProwlPlatformColor = NSColor
 #endif
 
-public enum ProwlJSONSyntaxHighlighter {
-    public static func highlight(_ text: String, contentType: String?) -> AttributedString {
+enum ProwlJSONSyntaxHighlighter {
+    static func highlight(_ text: String, contentType: String?) -> AttributedString {
     #if canImport(UIKit) || canImport(AppKit)
         guard isJSON(contentType: contentType) else {
             return AttributedString(text)

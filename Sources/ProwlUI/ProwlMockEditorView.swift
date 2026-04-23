@@ -9,7 +9,7 @@
 import SwiftUI
 import ProwlCore
 
-public struct ProwlMockEditorView: View {
+struct ProwlMockEditorView: View {
     @StateObject private var viewModel: ProwlMockEditorViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -17,14 +17,14 @@ public struct ProwlMockEditorView: View {
     @State private var mockStatusCodeStr: String = "200"
     @State private var mockBodyJSONString: String
 
-    public init(log: NetworkLog) {
+    init(log: NetworkLog) {
         let vm = ProwlMockEditorViewModel(log: log)
         _viewModel = StateObject(wrappedValue: vm)
         _targetURLPattern = State(initialValue: vm.initialURLPattern)
         _mockBodyJSONString = State(initialValue: vm.initialBodyJSON)
     }
 
-    public var body: some View {
+    var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Matcher Rules (URL Contains)")) {

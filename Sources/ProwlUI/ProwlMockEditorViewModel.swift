@@ -9,20 +9,20 @@
 import Foundation
 import ProwlCore
 
-public enum ProwlMockEditorIntent {
+enum ProwlMockEditorIntent {
     case save(urlPattern: String, statusCodeStr: String, bodyJSON: String)
     case cancel
 }
 
 @MainActor
-public final class ProwlMockEditorViewModel: ObservableObject {
+final class ProwlMockEditorViewModel: ObservableObject {
 
-    public let initialURLPattern: String
-    public let initialBodyJSON: String
+    let initialURLPattern: String
+    let initialBodyJSON: String
 
-    @Published public private(set) var isSaved = false
+    @Published private(set) var isSaved = false
 
-    public init(log: NetworkLog) {
+    init(log: NetworkLog) {
         initialURLPattern = log.url?.absoluteString ?? ""
 
         var defaultBody = #"{ "message": "Mocked via Prowl" }"#
@@ -33,7 +33,7 @@ public final class ProwlMockEditorViewModel: ObservableObject {
         initialBodyJSON = defaultBody
     }
 
-    public func handle(_ intent: ProwlMockEditorIntent) {
+    func handle(_ intent: ProwlMockEditorIntent) {
         switch intent {
         case let .save(urlPattern, statusCodeStr, bodyJSON):
             save(urlPattern: urlPattern, statusCodeStr: statusCodeStr, bodyJSON: bodyJSON)

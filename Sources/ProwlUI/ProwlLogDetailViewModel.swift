@@ -14,13 +14,13 @@ import UIKit
 import AppKit
 #endif
 
-public enum ProwlBodyRenderable: Sendable {
+enum ProwlBodyRenderable: Sendable {
     case text(AttributedString)
     case image(Data)
     case empty
 }
 
-public enum ProwlLogDetailIntent {
+enum ProwlLogDetailIntent {
     case togglePrettyPrint
     case copyBody(isRequest: Bool)
     case shareJSON
@@ -29,22 +29,22 @@ public enum ProwlLogDetailIntent {
 
 
 @MainActor
-public final class ProwlLogDetailViewModel: ObservableObject {
+final class ProwlLogDetailViewModel: ObservableObject {
 
-    @Published public private(set) var requestBody: ProwlBodyRenderable = .empty
-    @Published public private(set) var responseBody: ProwlBodyRenderable = .empty
-    @Published public private(set) var isPretty: Bool = true
-    @Published public private(set) var shareContent: String? = nil
-    @Published public private(set) var pasteboardString: String? = nil
+    @Published private(set) var requestBody: ProwlBodyRenderable = .empty
+    @Published private(set) var responseBody: ProwlBodyRenderable = .empty
+    @Published private(set) var isPretty: Bool = true
+    @Published private(set) var shareContent: String? = nil
+    @Published private(set) var pasteboardString: String? = nil
 
     private let log: NetworkLog
 
-    public init(log: NetworkLog) {
+    init(log: NetworkLog) {
         self.log = log
         recompute()
     }
 
-    public func handle(_ intent: ProwlLogDetailIntent) {
+    func handle(_ intent: ProwlLogDetailIntent) {
         switch intent {
         case .togglePrettyPrint:
             isPretty.toggle()

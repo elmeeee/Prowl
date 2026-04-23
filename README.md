@@ -302,6 +302,32 @@ It includes:
 Prowl.stop()
 ```
 
+## Release Checklist
+
+Use this checklist before publishing a public tag:
+
+1. Ensure tests pass locally:
+
+```bash
+swift test
+```
+
+2. Verify CI is green on both configured Xcode lanes (`latest-stable` and pinned lane).
+3. Confirm the package version in `Sources/Prowl/Prowl.swift` is final.
+4. Review public API surface (only intentional symbols should remain `public`).
+5. Validate docs examples in this `README.md` still match current behavior.
+6. Create an immutable annotated tag and push it:
+
+```bash
+git tag -a <version> -m "Release <version>"
+git push origin <version>
+```
+
+7. Create GitHub release notes summarizing:
+   - user-facing changes
+   - migration notes (if any)
+   - known limitations
+
 ## Notes
 
 - Prowl uses native APIs only (no third-party dependencies).

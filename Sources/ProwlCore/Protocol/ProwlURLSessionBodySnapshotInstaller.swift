@@ -4,14 +4,13 @@ import Foundation
 import ObjectiveC.runtime
 
 enum ProwlURLSessionBodySnapshotInstaller {
-    private static var hasInstalled = false
-
-    static func installIfNeeded() {
-        guard !hasInstalled else { return }
-        hasInstalled = true
-
+    private static let installOnce: Void = {
         swizzleUploadTaskWithoutCompletion()
         swizzleUploadTaskWithCompletion()
+    }()
+
+    static func installIfNeeded() {
+        _ = installOnce
     }
 
     private static func swizzleUploadTaskWithoutCompletion() {

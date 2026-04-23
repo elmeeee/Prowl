@@ -1,7 +1,7 @@
 import Foundation
 
 public struct SensitiveDataMasker: Sendable {
-    private static let defaultSensitiveHeaders: Set<String> = [
+    public static let defaultSensitiveHeaders: Set<String> = [
         "authorization",
         "proxy-authorization",
         "cookie",
@@ -10,7 +10,7 @@ public struct SensitiveDataMasker: Sendable {
         "x-auth-token"
     ]
 
-    private static let defaultSensitiveJSONKeys: Set<String> = [
+    public static let defaultSensitiveJSONKeys: Set<String> = [
         "password",
         "passcode",
         "token",

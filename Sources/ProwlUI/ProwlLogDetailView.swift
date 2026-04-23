@@ -374,6 +374,14 @@ public struct ProwlLogDetailView: View {
                 .font(.system(size: Self.contentFontSize))
                 .foregroundColor(.primary)
                 .textSelection(.enabled)
+                .onLongPressGesture(minimumDuration: 0.4) {
+                    copyToPasteboard(value, toastMessage: toastMessage ?? "\(label) copied")
+                }
+                .contextMenu {
+                    Button("Copy") {
+                        copyToPasteboard(value, toastMessage: toastMessage ?? "\(label) copied")
+                    }
+                }
         }
     }
 
@@ -429,6 +437,16 @@ public struct ProwlLogDetailView: View {
                             .font(.system(size: Self.contentFontSize))
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
+                            .onLongPressGesture(minimumDuration: 0.4) {
+                                let headerValue = headers[key] ?? ""
+                                copyToPasteboard("\(key): \(headerValue)", toastMessage: "\(key) header copied")
+                            }
+                            .contextMenu {
+                                Button("Copy") {
+                                    let headerValue = headers[key] ?? ""
+                                    copyToPasteboard("\(key): \(headerValue)", toastMessage: "\(key) header copied")
+                                }
+                            }
                     }
                 }
             }
@@ -489,6 +507,14 @@ public struct ProwlLogDetailView: View {
                     Text(highlighted)
                         .font(.system(size: Self.contentFontSize, design: .monospaced))
                         .textSelection(.enabled)
+                    .onLongPressGesture(minimumDuration: 0.4) {
+                        copyToPasteboard(text, toastMessage: toastMessage)
+                    }
+                    .contextMenu {
+                        Button("Copy") {
+                            copyToPasteboard(text, toastMessage: toastMessage)
+                        }
+                    }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(
@@ -500,6 +526,14 @@ public struct ProwlLogDetailView: View {
                         .font(.system(size: Self.contentFontSize, design: .monospaced))
                         .foregroundColor(.primary)
                         .textSelection(.enabled)
+                    .onLongPressGesture(minimumDuration: 0.4) {
+                        copyToPasteboard(text, toastMessage: toastMessage)
+                    }
+                    .contextMenu {
+                        Button("Copy") {
+                            copyToPasteboard(text, toastMessage: toastMessage)
+                        }
+                    }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(
@@ -544,6 +578,20 @@ public struct ProwlLogDetailView: View {
                                 .font(.system(size: Self.contentFontSize))
                                 .foregroundColor(.primary)
                                 .textSelection(.enabled)
+                                .onLongPressGesture(minimumDuration: 0.4) {
+                                    copyToPasteboard(
+                                        "\(queryItem.name)=\(queryItem.value ?? "")",
+                                        toastMessage: "\(queryItem.name) query copied"
+                                    )
+                                }
+                                .contextMenu {
+                                    Button("Copy") {
+                                        copyToPasteboard(
+                                            "\(queryItem.name)=\(queryItem.value ?? "")",
+                                            toastMessage: "\(queryItem.name) query copied"
+                                        )
+                                    }
+                                }
                         }
                     }
                 }

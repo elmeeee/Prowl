@@ -164,9 +164,10 @@ Prowl.isSensitiveDataMaskingEnabled = false // default (show raw values)
 Prowl.isSensitiveDataMaskingEnabled = true  // redact sensitive values
 ```
 
-## Stream Request Body (Safe Path)
+## Stream Request Body Capture
 
-For requests that use `httpBodyStream`, attach a snapshot at request-build time so Prowl can log payload safely without mutating network transport:
+Prowl now follows a netfox-style body capture path (`httpBody` / `httpBodyStream` / metadata snapshot fallback).  
+For best reliability with custom stream builders, you can still attach a snapshot at request-build time:
 
 ```swift
 import ProwlCore
@@ -176,7 +177,7 @@ request.httpMethod = "POST"
 
 let payload = try JSONEncoder().encode(body)
 request.httpBodyStream = InputStream(data: payload)
-request.attachProwlBodySnapshot(payload) // safe logging snapshot
+request.attachProwlBodySnapshot(payload) // optional reliability hint
 ```
 
 ### URLSession Integration (Automatic + Helpers)
@@ -186,7 +187,7 @@ Prowl now installs safe snapshot support at `Prowl.start()` time for:
 - `URLSession.uploadTask(with:from:)`
 - `URLSession.uploadTask(with:from:completionHandler:)`
 
-That means payloads passed as `Data` are auto-snapshotted for logs without mutating transport behavior.
+That means payloads passed as `Data` are auto-attached as body snapshots for logging.
 
 For streamed uploads, use helper APIs:
 
@@ -197,7 +198,7 @@ var request = URLRequest(url: endpoint)
 request.httpMethod = "POST"
 
 let payload = try JSONEncoder().encode(body)
-request.setProwlHTTPBodyStream(payload) // stream + safe snapshot in one call
+request.setProwlHTTPBodyStream(payload) // stream + snapshot in one call
 
 let task = URLSession.shared.prowlUploadTask(
     withStreamedRequest: request,
@@ -208,7 +209,7 @@ task.resume()
 
 ### Alamofire Integration
 
-If you use Alamofire, plug in `ProwlAlamofireBodySnapshotInterceptor` so request bodies are snapshotted during adaptation:
+If you use Alamofire, plug in `ProwlAlamofireBodySnapshotInterceptor` to auto-attach request body snapshots during adaptation:
 
 ```swift
 import Alamofire

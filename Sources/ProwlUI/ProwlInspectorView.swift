@@ -106,31 +106,62 @@ public struct ProwlInspectorView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(.secondary)
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
-                    statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
-                    statusChip(
-                        title: "Sensitive",
-                        value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
-                        color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
-                    )
-                    Spacer(minLength: 0)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
-                    statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
-                    statusChip(
-                        title: "Sensitive",
-                        value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
-                        color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
-                    )
-                }
-            }
+            statusChipsLayout
         }
         .padding(.vertical, 4)
         .listRowBackground(Color.clear)
+    }
+
+    @ViewBuilder
+    private var statusChipsLayout: some View {
+        #if os(iOS)
+        if #available(iOS 16.0, *) {
+            statusChipsViewThatFits
+        } else {
+            statusChipsStack
+        }
+        #elseif os(macOS)
+        if #available(macOS 13.0, *) {
+            statusChipsViewThatFits
+        } else {
+            statusChipsStack
+        }
+        #else
+        statusChipsStack
+        #endif
+    }
+
+    @available(iOS 16.0, macOS 13.0, *)
+    private var statusChipsViewThatFits: some View {
+        ViewThatFits(in: .horizontal) {
+            statusChipsRow
+            statusChipsStack
+        }
+    }
+
+    private var statusChipsRow: some View {
+        HStack(spacing: 8) {
+            statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
+            statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
+            statusChip(
+                title: "Sensitive",
+                value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
+                color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
+            )
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var statusChipsStack: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            statusChip(title: "Logging", value: ProwlRuntime.isLoggingEnabled ? "On" : "Off", color: ProwlRuntime.isLoggingEnabled ? .green : .red)
+            statusChip(title: "Body", value: requestBodyCaptureModeTitle, color: requestBodyCaptureModeColor)
+            statusChip(
+                title: "Sensitive",
+                value: ProwlRuntime.isSensitiveDataMaskingEnabled ? "Masked" : "Raw",
+                color: ProwlRuntime.isSensitiveDataMaskingEnabled ? .green : .orange
+            )
+        }
     }
 
     private func statusChip(title: String, value: String, color: Color) -> some View {

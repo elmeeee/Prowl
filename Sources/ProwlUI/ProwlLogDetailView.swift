@@ -169,7 +169,7 @@ public struct ProwlLogDetailView: View {
                     HStack(spacing: 10) {
                         capsuleTag(
                             text: log.method.uppercased(),
-                            color: .blue,
+                            color: brandAccent,
                             copyValue: log.method.uppercased(),
                             toastMessage: "Method copied"
                         )
@@ -310,7 +310,7 @@ public struct ProwlLogDetailView: View {
             .font(.system(size: Self.contentFontSize, weight: .bold))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color.blue.opacity(0.1), in: Capsule())
+            .background(brandAccent.opacity(0.16), in: Capsule())
             .accessibilityLabel("Copy \(title)")
             .accessibilityHint("Copies \(title.lowercased()) section to clipboard")
         }
@@ -366,7 +366,7 @@ public struct ProwlLogDetailView: View {
                 .font(.system(size: Self.contentFontSize, weight: .bold))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background(Color.blue.opacity(0.1), in: Capsule())
+                .background(brandAccent.opacity(0.16), in: Capsule())
                 .accessibilityLabel("Copy \(label)")
                 .accessibilityHint("Copies \(label.lowercased()) value to clipboard")
             }
@@ -429,7 +429,7 @@ public struct ProwlLogDetailView: View {
                             .font(.system(size: Self.contentFontSize, weight: .bold))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
-                            .background(Color.blue.opacity(0.1), in: Capsule())
+                            .background(brandAccent.opacity(0.16), in: Capsule())
                             .accessibilityLabel("Copy \(key) header")
                             .accessibilityHint("Copies \(key) header to clipboard")
                         }
@@ -475,7 +475,7 @@ public struct ProwlLogDetailView: View {
                 .font(.system(size: Self.contentFontSize, weight: .bold))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background(Color.blue.opacity(0.1), in: Capsule())
+                .background(brandAccent.opacity(0.16), in: Capsule())
                 .accessibilityLabel("Copy body")
                 .accessibilityHint("Copies body content to clipboard")
             }
@@ -492,7 +492,7 @@ public struct ProwlLogDetailView: View {
                         .font(.system(size: Self.contentFontSize, weight: .bold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1), in: Capsule())
+                        .background(brandAccent.opacity(0.16), in: Capsule())
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -572,7 +572,7 @@ public struct ProwlLogDetailView: View {
                                 .font(.system(size: Self.contentFontSize, weight: .bold))
                                 .padding(.horizontal, 9)
                                 .padding(.vertical, 5)
-                                .background(Color.blue.opacity(0.1), in: Capsule())
+                                .background(brandAccent.opacity(0.16), in: Capsule())
                             }
                             Text(queryItem.value ?? "")
                                 .font(.system(size: Self.contentFontSize))
@@ -711,7 +711,7 @@ public struct ProwlLogDetailView: View {
                 .foregroundColor(.secondary)
             if let siteURL = URL(string: "https://elmee.my") {
                 Link("elmee.my", destination: siteURL)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(brandAccent)
             }
         }
         .font(.system(size: Self.contentFontSize))
@@ -784,6 +784,10 @@ public struct ProwlLogDetailView: View {
         case 500...599: return .red
         default: return .secondary
         }
+    }
+
+    private var brandAccent: Color {
+        Color(red: 0.94, green: 0.42, blue: 0.16)
     }
 
     private var platformBackground: Color {

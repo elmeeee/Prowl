@@ -88,9 +88,9 @@ public struct ProwlDashboardRowView: View {
 
     private func methodColor(_ method: String) -> Color {
         switch method.uppercased() {
-        case "GET": return .blue
-        case "POST": return .green
-        case "PUT", "PATCH": return .orange
+        case "GET": return Color(red: 0.94, green: 0.42, blue: 0.16)
+        case "POST": return Color(red: 0.95, green: 0.57, blue: 0.19)
+        case "PUT", "PATCH": return Color(red: 0.98, green: 0.72, blue: 0.29)
         case "DELETE": return .red
         default: return .secondary
         }

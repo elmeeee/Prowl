@@ -166,7 +166,7 @@ Prowl.isSensitiveDataMaskingEnabled = true  // redact sensitive values
 
 ## Stream Request Body Capture
 
-Prowl now follows a netfox-style body capture path (`httpBody` / `httpBodyStream` / metadata snapshot fallback).  
+Prowl now follows a body capture path (`httpBody` / `httpBodyStream` / metadata snapshot fallback).  
 For best reliability with custom stream builders, you can still attach a snapshot at request-build time:
 
 ```swift
@@ -302,6 +302,29 @@ It includes:
 Prowl.stop()
 ```
 
+## Upgrade Guide
+
+- Prefer upgrading by immutable tags (`1.0.x`) instead of floating revisions.
+- If you hit SPM cache mismatch after tag updates, reset package caches in Xcode and re-resolve packages.
+- After upgrading:
+  - run your app with `Prowl.isSensitiveDataMaskingEnabled = false` first for parity checks
+  - then enable masking in production if needed.
+
+## Troubleshooting
+
+- **CI iOS build fails with `cannot find <symbol> in scope`**  
+  Usually caused by access-level changes across package targets. Prefer `package` visibility for cross-target internals.
+- **`swift test` passes but iOS package build fails**  
+  Run `xcodebuild` package scheme checks locally (same command as CI) because iOS-only paths can be skipped by macOS test runs.
+- **SPM tag/revision conflicts**  
+  Ensure release tags are immutable and never retag existing versions.
+
+## Public API Policy
+
+- `Prowl` facade remains the main public entrypoint.
+- Core internals should stay `package`/`internal` unless there is a clear consumer need.
+- Any new public API should be documented in this README and added to `CHANGELOG.md`.
+
 ## Release Checklist
 
 Use this checklist before publishing a public tag:
@@ -323,13 +346,12 @@ git tag -a <version> -m "Release <version>"
 git push origin <version>
 ```
 
-7. Create GitHub release notes summarizing:
-   - user-facing changes
-   - migration notes (if any)
-   - known limitations
+7. Create GitHub release notes using `.github/RELEASE_TEMPLATE.md`.
+8. Update `CHANGELOG.md` with release notes summary.
 
 ## Notes
 
 - Prowl uses native APIs only (no third-party dependencies).
 - Log capture is designed to be idempotent and avoid side effects to host networking behavior.
 - `URLProtocol` loop prevention is handled internally.
+- See `CONTRIBUTING.md` for development guidelines and `SECURITY.md` for disclosure policy.

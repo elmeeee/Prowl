@@ -10,6 +10,8 @@ import SwiftUI
 import ProwlCore
 
 public struct ProwlInspectorView: View {
+    private static let contentHorizontalInset: CGFloat = 4
+
     @StateObject private var viewModel: ProwlInspectorViewModel
     @State private var selectedLogID: NetworkLog.ID?
     @State private var iOSExportPayload: ProwlExportPayload?
@@ -60,27 +62,46 @@ public struct ProwlInspectorView: View {
     }
 
     private var dashboardList: some View {
-        List(selection: $selectedLogID) {
+        let logs = viewModel.filteredLogs
+
+        return List(selection: $selectedLogID) {
             inspectorStatusRow
 
-            ForEach(viewModel.filteredLogs) { log in
-                #if os(macOS) || os(visionOS)
-                ProwlDashboardRowView(log: log)
-                    .tag(log.id)
-                #else
-                NavigationLink {
-                    ProwlLogDetailView(log: log)
-                } label: {
-                    ProwlDashboardRowView(log: log)
+            ForEach(Array(logs.enumerated()), id: \.element.id) { index, log in
+                VStack(alignment: .leading, spacing: 0) {
+                    dashboardListRow(for: log)
+
+                    if logs.count > 1, index < logs.count - 1 {
+                        Divider()
+                    }
                 }
-                #endif
+                .padding(.vertical, 8)
+                .background(rowBackgroundColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .prowlHideListRowSeparator()
+                .listRowInsets(
+                    EdgeInsets(
+                        top: 6,
+                        leading: Self.contentHorizontalInset,
+                        bottom: 6,
+                        trailing: Self.contentHorizontalInset
+                    )
+                )
+                .listRowBackground(Color.clear)
             }
             
-            if !viewModel.filteredLogs.isEmpty {
+            if !logs.isEmpty {
                 Text("Prowl • Crafted by Elmee")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: 8,
+                            leading: Self.contentHorizontalInset,
+                            bottom: 8,
+                            trailing: Self.contentHorizontalInset
+                        )
+                    )
                     .listRowBackground(Color.clear)
                     .padding(.top, 16)
                     .padding(.bottom, 8)
@@ -100,15 +121,46 @@ public struct ProwlInspectorView: View {
         #endif
     }
 
+    @ViewBuilder
+    private func dashboardListRow(for log: NetworkLog) -> some View {
+        #if os(macOS) || os(visionOS)
+        ProwlDashboardRowView(log: log)
+            .tag(log.id)
+        #else
+        NavigationLink {
+            ProwlLogDetailView(log: log)
+        } label: {
+            ProwlDashboardRowView(log: log)
+        }
+        .buttonStyle(.plain)
+        #endif
+    }
+
+    private var rowBackgroundColor: Color {
+    #if os(iOS)
+        Color(UIColor.secondarySystemBackground)
+    #else
+        Color.secondary.opacity(0.12)
+    #endif
+    }
+
     private var inspectorStatusRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Inspector Status")
+        HStack(spacing: 4) {
+            Text("Prowl Status:")
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(.secondary)
 
             statusChipsLayout
         }
         .padding(.vertical, 4)
+        .listRowInsets(
+            EdgeInsets(
+                top: 6,
+                leading: Self.contentHorizontalInset,
+                bottom: 6,
+                trailing: Self.contentHorizontalInset
+            )
+        )
         .listRowBackground(Color.clear)
     }
 
@@ -296,3 +348,88 @@ public struct ProwlInspectorView: View {
     }
 
 }
+
+private extension View {
+    @ViewBuilder
+    func prowlHideListRowSeparator() -> some View {
+        #if os(macOS)
+        if #available(macOS 13.0, *) {
+            self.listRowSeparator(.hidden)
+        } else {
+            self
+        }
+        #else
+        self.listRowSeparator(.hidden)
+        #endif
+    }
+}
+
+#if DEBUG
+private struct ProwlInspectorPreviewHarness: View {
+    private let storage = ProwlStorage(limit: 50)
+    @State private var hasSeeded = false
+
+    var body: some View {
+        ProwlInspectorView(storage: storage)
+            .onAppear {
+                guard !hasSeeded else { return }
+                hasSeeded = true
+
+                Task {
+                    await storage.clear()
+                    for log in previewLogs {
+                        await storage.append(log)
+                    }
+                }
+            }
+    }
+
+    private var previewLogs: [NetworkLog] {
+        let now = Date()
+        return [
+            NetworkLog(
+                url: URL(string: "https://api.prowl.dev/v1/profile?expand=devices"),
+                method: "GET",
+                requestHeaders: ["Authorization": "Bearer preview-token"],
+                responseHeaders: ["Content-Type": "application/json"],
+                responseBody: .init(data: Data("{\"name\":\"Elmee\"}".utf8), contentType: "application/json"),
+                statusCode: 200,
+                startedAt: now.addingTimeInterval(-8),
+                duration: 0.182,
+                timeoutInterval: 60,
+                cachePolicy: "UseProtocolCachePolicy"
+            ),
+            NetworkLog(
+                url: URL(string: "https://api.prowl.dev/v1/orders?page=2&limit=20"),
+                method: "POST",
+                requestHeaders: ["Content-Type": "application/json"],
+                requestBody: .init(data: Data("{\"status\":\"pending\"}".utf8), contentType: "application/json"),
+                responseHeaders: ["Content-Type": "application/json"],
+                responseBody: .init(data: Data("{\"ok\":true}".utf8), contentType: "application/json"),
+                statusCode: 201,
+                startedAt: now.addingTimeInterval(-5),
+                duration: 0.341,
+                timeoutInterval: 30,
+                cachePolicy: "ReloadIgnoringLocalCacheData"
+            ),
+            NetworkLog(
+                url: URL(string: "https://api.prowl.dev/v1/upload"),
+                method: "PUT",
+                requestHeaders: ["Content-Type": "application/octet-stream"],
+                responseHeaders: ["Content-Type": "application/json"],
+                responseBody: .init(data: Data("{\"error\":\"timeout\"}".utf8), contentType: "application/json"),
+                statusCode: 504,
+                startedAt: now.addingTimeInterval(-2),
+                duration: 1.219,
+                timeoutInterval: 15,
+                cachePolicy: "ReloadIgnoringLocalCacheData",
+                errorDescription: "The request timed out."
+            )
+        ]
+    }
+}
+
+#Preview("Inspector Dashboard") {
+    ProwlInspectorPreviewHarness()
+}
+#endif

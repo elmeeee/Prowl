@@ -224,42 +224,27 @@ public struct ProwlLogDetailView: View {
                 }
             }
 
-            fixedHeightSectionCard(title: "Payload") {
-                VStack(alignment: .leading, spacing: 10) {
-                    labeledValue(
-                        "Request type",
-                        value: log.requestBody?.contentType ?? "-",
-                        toastMessage: "Request type copied"
-                    )
-                    labeledValue(
-                        "Response type",
-                        value: log.responseBody?.contentType ?? "-",
-                        toastMessage: "Response type copied"
-                    )
-                    labeledValue(
-                        "Request size",
-                        value: byteSizeText(log.requestBody?.data.count ?? 0),
-                        toastMessage: "Request size copied"
-                    )
-                    labeledValue(
-                        "Response size",
-                        value: byteSizeText(log.responseBody?.data.count ?? 0),
-                        toastMessage: "Response size copied"
-                    )
+            if hasURLQueryItems {
+                fixedHeightSectionCard(title: "URL Query Strings") {
+                    queryItemList(log.url)
                 }
-            }
-
-            fixedHeightSectionCard(title: "URL Query Strings") {
-                queryItemList(log.url)
             }
         }
     }
 
+    private var hasURLQueryItems: Bool {
+        guard
+            let url = log.url,
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else {
+            return false
+        }
+        return !(components.queryItems ?? []).isEmpty
+    }
+
     private var requestTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "Request") {
-                copyToPasteboard(requestDumpText(), toastMessage: "Request copied")
-            }
+            sectionHeader(title: "Request")
             fixedHeightSectionCard(title: "Headers") {
                 headerList(log.requestHeaders, emptyText: "Request headers are empty")
             }
@@ -278,9 +263,7 @@ public struct ProwlLogDetailView: View {
 
     private var responseTabContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "Response") {
-                copyToPasteboard(responseDumpText(), toastMessage: "Response copied")
-            }
+            sectionHeader(title: "Response")
             fixedHeightSectionCard(title: "Headers") {
                 headerList(log.responseHeaders, emptyText: "Response headers are empty")
             }
@@ -298,21 +281,12 @@ public struct ProwlLogDetailView: View {
     }
 
     @ViewBuilder
-    private func sectionHeader(title: String, onCopy: @escaping () -> Void) -> some View {
+    private func sectionHeader(title: String) -> some View {
         HStack {
             Text(title)
                 .font(.system(size: Self.titleFontSize, weight: .semibold))
                 .foregroundColor(.primary)
             Spacer()
-            Button("Copy") {
-                onCopy()
-            }
-            .font(.system(size: Self.contentFontSize, weight: .bold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(brandAccent.opacity(0.16), in: Capsule())
-            .accessibilityLabel("Copy \(title)")
-            .accessibilityHint("Copies \(title.lowercased()) section to clipboard")
         }
     }
 
@@ -359,16 +333,6 @@ public struct ProwlLogDetailView: View {
                 Text(label)
                     .font(.system(size: Self.contentFontSize, weight: .semibold))
                     .foregroundColor(.secondary)
-                Spacer(minLength: 0)
-                Button("Copy") {
-                    copyToPasteboard(value, toastMessage: toastMessage ?? "\(label) copied")
-                }
-                .font(.system(size: Self.contentFontSize, weight: .bold))
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(brandAccent.opacity(0.16), in: Capsule())
-                .accessibilityLabel("Copy \(label)")
-                .accessibilityHint("Copies \(label.lowercased()) value to clipboard")
             }
             Text(value)
                 .font(.system(size: Self.contentFontSize))
@@ -417,22 +381,9 @@ public struct ProwlLogDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(headers.keys.sorted(), id: \.self) { key in
                     VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 8) {
-                            Text(key)
-                                .font(.system(size: Self.contentFontSize, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            Spacer(minLength: 0)
-                            Button("Copy") {
-                                let headerValue = headers[key] ?? ""
-                                copyToPasteboard("\(key): \(headerValue)", toastMessage: "\(key) header copied")
-                            }
-                            .font(.system(size: Self.contentFontSize, weight: .bold))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(brandAccent.opacity(0.16), in: Capsule())
-                            .accessibilityLabel("Copy \(key) header")
-                            .accessibilityHint("Copies \(key) header to clipboard")
-                        }
+                        Text(key)
+                            .font(.system(size: Self.contentFontSize, weight: .semibold))
+                            .foregroundColor(.secondary)
                         Text(headers[key] ?? "")
                             .font(.system(size: Self.contentFontSize))
                             .foregroundColor(.primary)
@@ -467,18 +418,6 @@ public struct ProwlLogDetailView: View {
         let isTooLong = text.count > 1024
         let shouldShowPreviewMessage = hasBody && isTooLong && !isShowingFullBody.wrappedValue
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Spacer()
-                Button("Copy") {
-                    copyToPasteboard(text, toastMessage: toastMessage)
-                }
-                .font(.system(size: Self.contentFontSize, weight: .bold))
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(brandAccent.opacity(0.16), in: Capsule())
-                .accessibilityLabel("Copy body")
-                .accessibilityHint("Copies body content to clipboard")
-            }
             if shouldShowPreviewMessage {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Too long to show. If you want to see it, please tap the following button")
@@ -558,22 +497,9 @@ public struct ProwlLogDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(queryItems.enumerated()), id: \.offset) { _, queryItem in
                         VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 8) {
-                                Text(queryItem.name)
-                                    .font(.system(size: Self.contentFontSize, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                Spacer(minLength: 0)
-                                Button("Copy") {
-                                    copyToPasteboard(
-                                        "\(queryItem.name)=\(queryItem.value ?? "")",
-                                        toastMessage: "\(queryItem.name) query copied"
-                                    )
-                                }
-                                .font(.system(size: Self.contentFontSize, weight: .bold))
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(brandAccent.opacity(0.16), in: Capsule())
-                            }
+                            Text(queryItem.name)
+                                .font(.system(size: Self.contentFontSize, weight: .semibold))
+                                .foregroundColor(.secondary)
                             Text(queryItem.value ?? "")
                                 .font(.system(size: Self.contentFontSize))
                                 .foregroundColor(.primary)

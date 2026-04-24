@@ -8,6 +8,7 @@
 
 import Foundation
 #if os(iOS)
+import ProwlUI
 import SwiftUI
 import UIKit
 

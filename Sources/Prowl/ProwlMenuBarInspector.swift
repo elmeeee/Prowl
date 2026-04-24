@@ -9,6 +9,7 @@
 import Foundation
 #if os(macOS)
 import AppKit
+import ProwlUI
 import SwiftUI
 
 @MainActor

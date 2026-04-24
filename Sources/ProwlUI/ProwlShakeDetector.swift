@@ -12,14 +12,14 @@ import UIKit
 import ObjectiveC.runtime
 
 @MainActor
-enum ProwlShakeMonitor {
-    static let didShakeNotification = Notification.Name("com.prowl.didShake")
+package enum ProwlShakeMonitor {
+    package static let didShakeNotification = Notification.Name("com.prowl.didShake")
 
     private static let debounceInterval: TimeInterval = 1.5
     private static var isInstalled = false
     private static var lastPostedAt: Date?
 
-    static func installIfNeeded() {
+    package static func installIfNeeded() {
         guard !isInstalled else { return }
         isInstalled = true
 
@@ -36,7 +36,7 @@ enum ProwlShakeMonitor {
     /// Called from swizzled @objc methods on the main thread via the ObjC runtime.
     /// We hop into a MainActor Task explicitly so callers from ObjC dispatch are safe
     /// under Swift 6 strict concurrency.
-    nonisolated static func postShakeDetected() {
+    nonisolated package static func postShakeDetected() {
         Task { @MainActor in
             let now = Date()
             if let last = lastPostedAt, now.timeIntervalSince(last) < debounceInterval {

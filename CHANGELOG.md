@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-04-24
+
 ### Added
 - Release checklist in `README.md` and release validation workflow for tag builds.
 - Public-maintainer docs: `CONTRIBUTING.md`, `SECURITY.md`, and release template.

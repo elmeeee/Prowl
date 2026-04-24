@@ -24,17 +24,29 @@ public struct ProwlInspectorView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var systemColorScheme
 
     public var body: some View {
         NavigationView {
             dashboardList
                 .navigationTitle("Prowl")
+                #if os(iOS)
+                .searchable(
+                    text: $viewModel.searchText,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: "Search URL"
+                )
+                #else
                 .searchable(text: $viewModel.searchText, prompt: "Search URL")
+                #endif
                 .toolbar { toolbarContent }
             #if os(macOS) || os(visionOS)
             detailPane
             #endif
         }
+        #if os(iOS)
+        .navigationViewStyle(.stack)
+        #endif
         .preferredColorScheme(colorScheme)
         #if os(iOS) || os(visionOS)
         .sheet(item: $iOSExportPayload) { payload in
@@ -72,11 +84,12 @@ public struct ProwlInspectorView: View {
                     dashboardListRow(for: log)
 
                     if logs.count > 1, index < logs.count - 1 {
-                        Divider()
+                        Rectangle()
+                            .fill(rowDividerColor)
+                            .frame(height: 1)
                     }
                 }
-                .padding(.vertical, 8)
-                .background(rowBackgroundColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.vertical, 4)
                 .prowlHideListRowSeparator()
                 .listRowInsets(
                     EdgeInsets(
@@ -136,12 +149,10 @@ public struct ProwlInspectorView: View {
         #endif
     }
 
-    private var rowBackgroundColor: Color {
-    #if os(iOS)
-        Color(UIColor.secondarySystemBackground)
-    #else
-        Color.secondary.opacity(0.12)
-    #endif
+    private var rowDividerColor: Color {
+        systemColorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.primary.opacity(0.10)
     }
 
     private var inspectorStatusRow: some View {
@@ -245,9 +256,12 @@ public struct ProwlInspectorView: View {
     private var toolbarContent: some ToolbarContent {
     #if os(iOS)
         ToolbarItem(placement: .navigationBarLeading) {
-            Button("Dismiss") {
+            Button {
                 dismiss()
+            } label: {
+                Image(systemName: "xmark")
             }
+            .accessibilityLabel("Dismiss")
         }
     #endif
 

@@ -51,7 +51,12 @@ struct ProwlMockEditorView: View {
             .navigationTitle("Mock Endpoint")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Dismiss")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save & Enable") {

@@ -52,9 +52,12 @@ struct ProwlSettingsView: View {
         #if os(macOS)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
+                Button {
                     dismiss()
+                } label: {
+                    Image(systemName: "xmark")
                 }
+                .accessibilityLabel("Dismiss")
             }
         }
         #endif
@@ -97,6 +100,9 @@ struct ProwlSettingsView: View {
             Section(header: Text("Export & Share")) {
                 exportJSONButton
                 exportCURLButton
+                Text("Export data for debugging and issue reporting.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
 
             Section(header: Text("Environment Info")) {
@@ -313,8 +319,14 @@ struct ProwlSettingsView: View {
             }
             #endif
         }) {
-            Label("Share / Email Logs (JSON)", systemImage: "envelope")
+            exportActionLabel(
+                title: "Share / Email Logs (JSON)",
+                subtitle: "Readable request/response dump",
+                systemImage: "envelope",
+                tint: .blue
+            )
         }
+        .buttonStyle(.plain)
     }
 
     private var exportCURLButton: some View {
@@ -328,8 +340,45 @@ struct ProwlSettingsView: View {
             }
             #endif
         }) {
-            Label("Share cURL Commands", systemImage: "terminal")
+            exportActionLabel(
+                title: "Share cURL Commands",
+                subtitle: "Replay requests quickly in terminal",
+                systemImage: "terminal",
+                tint: .orange
+            )
         }
+        .buttonStyle(.plain)
+    }
+
+    private func exportActionLabel(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 6)
     }
 
     private func labeledStatRow(title: String, value: String) -> some View {

@@ -10,6 +10,10 @@ import SwiftUI
 import ProwlCore
 
 struct ProwlDashboardRowView: View {
+#if os(iOS) || os(visionOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
+
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -25,11 +29,11 @@ struct ProwlDashboardRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .center, spacing: rowSpacing) {
                 methodBadge(log.method)
                 
                 Text(log.url?.path.isEmpty == false ? (log.url?.path ?? "/") : "/")
-                    .font(.body.monospaced().weight(.medium))
+                    .font(pathFont)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundColor(.primary)
@@ -37,7 +41,7 @@ struct ProwlDashboardRowView: View {
                 Spacer(minLength: 8)
                 
                 Text(Self.timestampFormatter.string(from: log.startedAt))
-                    .font(.caption2.monospacedDigit())
+                    .font(metaFont)
                     .foregroundColor(.secondary)
             }
             
@@ -46,7 +50,7 @@ struct ProwlDashboardRowView: View {
                 
                 if let host = log.url?.host {
                     Text(host)
-                        .font(.caption)
+                        .font(hostFont)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -54,20 +58,20 @@ struct ProwlDashboardRowView: View {
                 Spacer(minLength: 8)
                 
                 Text(String(format: "%.3fs", log.duration))
-                    .font(.caption2.monospacedDigit())
+                    .font(metaFont)
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, rowVerticalPadding)
     }
 
     @ViewBuilder
     private func methodBadge(_ method: String) -> some View {
         Text(method.uppercased())
-            .font(.caption2.monospaced().weight(.bold))
+            .font(badgeFont)
             .foregroundColor(methodColor(method))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
+            .padding(.horizontal, badgeHorizontalPadding)
+            .padding(.vertical, badgeVerticalPadding)
             .background(methodColor(method).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
     }
 
@@ -76,14 +80,54 @@ struct ProwlDashboardRowView: View {
         HStack(spacing: 4) {
             Circle()
                 .fill(statusColor(statusCode))
-                .frame(width: 8, height: 8)
+                .frame(width: statusDotSize, height: statusDotSize)
             Text(statusCode.map { "\($0)" } ?? "ERR")
-                .font(.caption.monospaced().weight(.bold))
+                .font(statusFont)
                 .foregroundColor(statusColor(statusCode))
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
+        .padding(.horizontal, badgeHorizontalPadding)
+        .padding(.vertical, badgeVerticalPadding)
         .background(statusColor(statusCode).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var isRegularWidthLayout: Bool {
+#if os(iOS) || os(visionOS)
+        return horizontalSizeClass == .regular
+#else
+        return false
+#endif
+    }
+
+    private var rowSpacing: CGFloat { isRegularWidthLayout ? 14 : 10 }
+    private var rowVerticalPadding: CGFloat { isRegularWidthLayout ? 12 : 8 }
+    private var badgeHorizontalPadding: CGFloat { isRegularWidthLayout ? 8 : 6 }
+    private var badgeVerticalPadding: CGFloat { isRegularWidthLayout ? 5 : 4 }
+    private var statusDotSize: CGFloat { isRegularWidthLayout ? 9 : 8 }
+
+    private var pathFont: Font {
+        isRegularWidthLayout
+            ? .title3.monospaced().weight(.medium)
+            : .body.monospaced().weight(.medium)
+    }
+
+    private var hostFont: Font {
+        isRegularWidthLayout ? .callout : .caption
+    }
+
+    private var metaFont: Font {
+        isRegularWidthLayout ? .callout.monospacedDigit() : .caption2.monospacedDigit()
+    }
+
+    private var badgeFont: Font {
+        isRegularWidthLayout
+            ? .caption.monospaced().weight(.bold)
+            : .caption2.monospaced().weight(.bold)
+    }
+
+    private var statusFont: Font {
+        isRegularWidthLayout
+            ? .callout.monospaced().weight(.bold)
+            : .caption.monospaced().weight(.bold)
     }
 
     private func methodColor(_ method: String) -> Color {

@@ -39,7 +39,11 @@ final class ProwlInspectorViewModel: ObservableObject {
             let existingLogs = await resolvedStorage.allLogs()
             if !existingLogs.isEmpty {
                 let sorted = existingLogs.sorted { $0.startedAt > $1.startedAt }
-                await MainActor.run { self.logs = sorted }
+                await Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    await Task.yield()
+                    self.logs = sorted
+                }.value
             }
             
             // Step 2: Subscribe to live stream for all subsequent updates
@@ -49,9 +53,13 @@ final class ProwlInspectorViewModel: ObservableObject {
                 // Guard: task may be cancelled while awaiting the next value
                 guard !Task.isCancelled else { return }
                 let sorted = entries.sorted { $0.startedAt > $1.startedAt }
-                await MainActor.run {
+                // Await so batches apply in order; fire-and-forget Tasks can finish out of order
+                // and overwrite newer logs with stale snapshots.
+                await Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    await Task.yield()
                     self.logs = sorted
-                }
+                }.value
             }
         }
     }

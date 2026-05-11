@@ -47,6 +47,20 @@ struct ProwlDashboardRowView: View {
             
             HStack(spacing: 8) {
                 statusBadge(statusCode: log.statusCode)
+
+                if log.endpointRateAlertTriggered {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.caption2.weight(.bold))
+                        Text("RATE")
+                            .font(.caption2.weight(.heavy))
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.18), in: Capsule())
+                    .accessibilityLabel("Endpoint rate threshold reached")
+                }
                 
                 if let host = log.url?.host {
                     Text(host)

@@ -62,6 +62,9 @@ enum ProwlJSONSyntaxHighlighter {
 
     private static func isJSON(contentType: String?) -> Bool {
         guard let contentType else { return false }
-        return contentType.lowercased().contains("application/json")
+        let lower = contentType.lowercased()
+        if lower.contains("json") { return true }
+        if lower.contains("+json") { return true }
+        return false
     }
 }

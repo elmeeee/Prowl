@@ -25,6 +25,8 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
     public let timeoutInterval: TimeInterval?
     public let cachePolicy: String?
     public let errorDescription: String?
+    /// Set when ``ProwlEndpointRateAlerts`` rules report this request reached a configured per-endpoint threshold.
+    public let endpointRateAlertTriggered: Bool
 
     public init(
         id: UUID = UUID(),
@@ -40,7 +42,8 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
         duration: TimeInterval,
         timeoutInterval: TimeInterval? = nil,
         cachePolicy: String? = nil,
-        errorDescription: String? = nil
+        errorDescription: String? = nil,
+        endpointRateAlertTriggered: Bool = false
     ) {
         self.id = id
         self.requestID = requestID
@@ -56,5 +59,6 @@ public struct NetworkLog: Identifiable, Sendable, Equatable {
         self.timeoutInterval = timeoutInterval
         self.cachePolicy = cachePolicy
         self.errorDescription = errorDescription
+        self.endpointRateAlertTriggered = endpointRateAlertTriggered
     }
 }

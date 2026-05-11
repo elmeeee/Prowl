@@ -51,6 +51,23 @@ public enum Prowl {
         set { ProwlRuntime.isSensitiveDataMaskingEnabled = newValue }
     }
 
+    /// Optional transform applied to **response** bytes before masking and persistence (logging only).
+    public static var responseBodyLoggingTransformer: (any ProwlResponseBodyLoggingTransforming)? {
+        get { ProwlRuntime.responseBodyLoggingTransformer }
+        set { ProwlRuntime.responseBodyLoggingTransformer = newValue }
+    }
+
+    /// Per-endpoint hit-count rules; when a threshold is reached, that request is flagged with ``NetworkLog/endpointRateAlertTriggered``.
+    public static var endpointRateAlertRules: [ProwlEndpointRateAlertRule] {
+        get { ProwlEndpointRateAlerts.rules }
+        set { ProwlEndpointRateAlerts.rules = newValue }
+    }
+
+    /// Clears in-memory hit counters used by ``endpointRateAlertRules`` (for example after clearing logs).
+    public static func resetEndpointRateAlertCounters() {
+        ProwlEndpointRateAlerts.resetCounters()
+    }
+
     public static func ignoreURL(_ urlString: String) {
         ProwlRuntime.ignoredURLs.insert(urlString)
     }

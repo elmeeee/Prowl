@@ -160,6 +160,21 @@ public struct ProwlLogDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             fixedHeightSectionCard(title: "Endpoint") {
                 VStack(alignment: .leading, spacing: 8) {
+                    if log.endpointRateAlertTriggered {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .foregroundColor(.orange)
+                            Text("This request reached a configured per-endpoint call-count threshold. Adjust Prowl.endpointRateAlertRules, or reset counters when clearing logs (Prowl.resetEndpointRateAlertCounters).")
+                                .font(.system(size: Self.contentFontSize))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.orange.opacity(0.12))
+                        )
+                    }
                     labeledValue(
                         "URL",
                         value: log.url?.absoluteString ?? "-",

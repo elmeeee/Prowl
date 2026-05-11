@@ -135,6 +135,24 @@ package final class ProwlProtocol: URLProtocol, @unchecked Sendable {
             let runtime = ProwlRuntime.shared
             let snapshot = await runtime.snapshot()
 
+            var responseDataForLogging = data
+            if let transformer = ProwlRuntime.responseBodyLoggingTransformer {
+                if let mapped = transformer.responseBodyForLogging(
+                    data: data,
+                    contentType: responseContentType,
+                    url: requestURL,
+                    statusCode: statusCode
+                ) {
+                    responseDataForLogging = mapped
+                }
+            }
+
+            let rateAlertTriggered = ProwlEndpointRateAlertCoordinator.shared.evaluateAndIncrement(
+                method: requestMethod,
+                url: requestURL,
+                absoluteURLString: requestURL?.absoluteString ?? ""
+            )
+
             let requestHeaders = maskingEnabled
                 ? snapshot.masker.mask(headers: requestHeaders)
                 : requestHeaders
@@ -146,8 +164,8 @@ package final class ProwlProtocol: URLProtocol, @unchecked Sendable {
                 ? snapshot.masker.mask(body: requestBodyDataToLog, contentType: requestContentType)
                 : requestBodyDataToLog.map { NetworkLog.Body(data: $0, contentType: requestContentType) }
             let responseBody = maskingEnabled
-                ? snapshot.masker.mask(body: data, contentType: responseContentType)
-                : NetworkLog.Body(data: data, contentType: responseContentType)
+                ? snapshot.masker.mask(body: responseDataForLogging, contentType: responseContentType)
+                : NetworkLog.Body(data: responseDataForLogging, contentType: responseContentType)
 
             let log = NetworkLog(
                 requestID: requestID,
@@ -162,7 +180,8 @@ package final class ProwlProtocol: URLProtocol, @unchecked Sendable {
                 duration: duration,
                 timeoutInterval: timeoutInterval,
                 cachePolicy: cachePolicy,
-                errorDescription: errorDescription
+                errorDescription: errorDescription,
+                endpointRateAlertTriggered: rateAlertTriggered
             )
             
             await snapshot.storage.append(log)

@@ -100,6 +100,7 @@ final class ProwlInspectorViewModel: ObservableObject {
                 targetStorage = await ProwlRuntime.shared.currentStorage()
             }
             await targetStorage.clear()
+            ProwlEndpointRateAlerts.resetCounters()
         }
     }
 }

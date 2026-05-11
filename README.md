@@ -164,6 +164,46 @@ Prowl.isSensitiveDataMaskingEnabled = false // default (show raw values)
 Prowl.isSensitiveDataMaskingEnabled = true  // redact sensitive values
 ```
 
+## Endpoint rate alerts (optional)
+
+Flag noisy or critical endpoints when traffic crosses a threshold (per HTTP method + host + path, ignoring the query string). The request that reaches the threshold gets `NetworkLog.endpointRateAlertTriggered == true`, surfaced in the dashboard and detail screen.
+
+```swift
+import Prowl
+
+Prowl.endpointRateAlertRules = [
+    .init(match: .urlContains("https://api.example.com/v1/search"), threshold: 50),
+    .init(match: .urlRegularExpression(pattern: #"https://telemetry\.[^/]+/collect"#), threshold: 20)
+]
+
+// Counters reset automatically when you clear logs in the inspector, or manually:
+Prowl.resetEndpointRateAlertCounters()
+```
+
+## Response body transform for logging (optional)
+
+If responses are encrypted or encoded for transport, implement `ProwlResponseBodyLoggingTransforming` to supply **decoded bytes for logging only** (the live `URLSession` response is unchanged). Return `nil` to keep the original payload.
+
+```swift
+import Prowl
+import ProwlCore
+
+final class MyDecryptor: ProwlResponseBodyLoggingTransforming {
+    func responseBodyForLogging(
+        data: Data,
+        contentType: String?,
+        url: URL?,
+        statusCode: Int?
+    ) -> Data? {
+        // Decode or decrypt `data` for display in Prowl; return nil to skip.
+        nil
+    }
+}
+
+Prowl.responseBodyLoggingTransformer = MyDecryptor()
+Prowl.start()
+```
+
 ## Stream Request Body Capture
 
 Prowl now follows a body capture path (`httpBody` / `httpBodyStream` / metadata snapshot fallback).  

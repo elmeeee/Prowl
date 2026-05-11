@@ -8,6 +8,7 @@ package actor ProwlRuntime {
     nonisolated(unsafe) package static var customSessionDelegate: URLSessionDelegate? = nil
     nonisolated(unsafe) package static var isLoggingEnabled: Bool = true
     nonisolated(unsafe) package static var isSensitiveDataMaskingEnabled: Bool = false
+    nonisolated(unsafe) package static var responseBodyLoggingTransformer: (any ProwlResponseBodyLoggingTransforming)?
 
     private var storage: ProwlStorage
     private var masker: SensitiveDataMasker

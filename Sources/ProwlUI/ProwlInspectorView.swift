@@ -391,6 +391,7 @@ private struct ProwlInspectorPreviewHarness: View {
 
                 Task {
                     await storage.clear()
+                    ProwlEndpointRateAlerts.resetCounters()
                     for log in previewLogs {
                         await storage.append(log)
                     }
